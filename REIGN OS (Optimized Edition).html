@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>REIGN OS // Esports Management System</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+tailwind.config={theme:{extend:{colors:{reign:{black:'#0a0a0c',card:'#111217',border:'#1e222d',accent:'#ff5500',red:'#ff2a44',light:'#f4f4f6',dim:'#8a8f9d'}},fontFamily:{mono:['"JetBrains Mono"','Menlo','monospace'],sans:['"Inter"','sans-serif']}}}}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+body{background-color:#08080a;background-image:radial-gradient(circle at 10% 20%, rgba(255, 85, 0, 0.05) 0%, transparent 40%),radial-gradient(circle at 90% 80%, rgba(255, 42, 68, 0.04) 0%, transparent 40%),linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);background-size:100% 100%, 100% 100%, 40px 40px, 40px 40px;font-family:'Inter', sans-serif;touch-action:manipulation;}
+.hud-border{border:1px solid rgba(255, 255, 255, 0.1);position:relative;}
+.hud-border::before{content:'';position:absolute;top:-1px;left:-1px;width:8px;height:8px;border-top:2px solid #ff5500;border-left:2px solid #ff5500;}
+.hud-border::after{content:'';position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-bottom:2px solid #ff5500;border-right:2px solid #ff5500;}
+.slip-card-bg{background:linear-gradient(135deg, #0d0f17 0%, #151824 50%, #0d0e14 100%);box-shadow:0 10px 30px -5px rgba(0,0,0,0.8), 0 0 20px rgba(255,85,0,0.15);}
+@keyframes pulseGlow{0%, 100%{box-shadow:0 0 15px rgba(255, 85, 0, 0.3);} 50%{box-shadow:0 0 30px rgba(255, 85, 0, 0.8);}}
+.roulette-active{animation:pulseGlow 0.4s infinite;border-color:#ff5500 !important;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:#0d0e12;}
+::-webkit-scrollbar-thumb{background:#232733;border-radius:2px;}
+.hide-scrollbar::-webkit-scrollbar{display:none;}
+.hide-scrollbar{-ms-overflow-style:none;scrollbar-width:none;}
+</style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col selection:bg-reign-accent selection:text-black">
+
+<div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-160%] opacity-0 transition-all duration-300 pointer-events-none">
+  <div class="bg-reign-card border-l-4 border-reign-accent text-white px-5 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-reign-border">
+    <i id="toast-icon" class="fa-solid fa-bolt text-reign-accent"></i>
+    <span id="toast-message" class="text-xs font-mono tracking-wider font-semibold">NOTIFICATION</span>
+  </div>
+</div>
+
+<header class="border-b border-reign-border bg-[#0a0a0c]/95 backdrop-blur-md sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-black border border-reign-accent flex items-center justify-center p-1.5 shadow-[0_0_15px_rgba(255,85,0,0.3)]">
+        <svg viewBox="0 0 24 24" fill="none" class="w-full h-full text-reign-accent" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="3 18 21 18 19 8 15 13 12 5 9 13 5 8" fill="rgba(255,85,0,0.15)"></polygon>
+          <circle cx="12" cy="4" r="1.2" fill="#ff5500"></circle><circle cx="4" cy="7" r="1.2" fill="#ff5500"></circle><circle cx="20" cy="7" r="1.2" fill="#ff5500"></circle>
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <h1 class="font-black tracking-tighter text-base sm:text-lg font-mono text-white">REIGN</h1>
+          <span class="text-reign-accent font-sans text-[10px] tracking-widest uppercase border border-reign-accent/40 px-1 py-0.2 rounded font-bold">Esports</span>
+        </div>
+        <p class="text-[9px] text-reign-dim tracking-wider font-mono">25日報酬管理・公式規定準拠 // #REWIN</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btn-download-html" class="px-3 py-2 text-xs font-mono bg-reign-accent active:bg-orange-600 rounded text-black font-extrabold transition flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,85,0,0.4)] cursor-pointer">
+        <i class="fa-solid fa-file-arrow-down text-sm"></i><span>HTML保存</span>
+      </button>
+      <button id="btn-export" class="px-2.5 py-2 text-xs font-mono bg-reign-card border border-reign-border text-reign-dim active:text-white rounded transition flex items-center gap-1">
+        <i class="fa-solid fa-download"></i><span class="hidden sm:inline">JSON</span>
+      </button>
+      <label for="import-file" class="cursor-pointer px-2.5 py-2 text-xs font-mono bg-reign-card border border-reign-border text-reign-dim active:text-white rounded transition flex items-center gap-1">
+        <i class="fa-solid fa-upload"></i><span class="hidden sm:inline">復元</span>
+      </label>
+      <input type="file" id="import-file" class="hidden" accept=".json">
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-2 sm:px-6 flex overflow-x-auto gap-1 border-t border-reign-border/60 hide-scrollbar">
+    <button class="nav-tab active flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-reign-accent text-white flex-shrink-0" data-target="tab-payout"><i class="fa-solid fa-coins text-reign-accent"></i> 25日支給・報酬</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-activity"><i class="fa-solid fa-trophy text-reign-dim"></i> 大会成績ログ</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-roster"><i class="fa-solid fa-users text-reign-dim"></i> メンバー名簿</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-academy"><i class="fa-solid fa-graduation-cap text-reign-dim"></i> 育成ミッション</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-apex-squad"><i class="fa-solid fa-crosshairs text-reign-dim"></i> APEX編成</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-custom"><i class="fa-solid fa-crown text-reign-dim"></i> 賞金付きカスタム</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-giveaway"><i class="fa-solid fa-gift text-reign-dim"></i> プレゼント企画</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-calendar"><i class="fa-solid fa-calendar-days text-reign-dim"></i> 予定カレンダー</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-finance"><i class="fa-solid fa-wallet text-reign-dim"></i> 財務・会計</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-recruitment"><i class="fa-solid fa-file-import text-reign-dim"></i> 応募取込</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-notes"><i class="fa-solid fa-book text-reign-dim"></i> 運営メモ</button>
+    <button class="nav-tab flex items-center gap-1.5 py-3 px-3 text-xs font-mono uppercase tracking-wider border-b-2 border-transparent text-reign-dim active:text-white flex-shrink-0" data-target="tab-rules"><i class="fa-solid fa-scale-balanced text-reign-dim"></i> 報酬規定</button>
+  </div>
+</header>
+
+<div class="bg-gradient-to-r from-orange-950/40 via-black to-red-950/40 border-b border-reign-accent/30 py-2.5 px-4 text-center">
+  <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-2 text-xs font-mono">
+    <span class="text-orange-300">📱 最新版に更新する場合:</span>
+    <button onclick="document.getElementById('btn-download-html').click()" class="underline font-bold text-reign-accent hover:text-white flex items-center gap-1">
+      <i class="fa-solid fa-download"></i> ここをタップして「index.html」を保存
+    </button>
+  </div>
+</div>
+
+<main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-5">
+  <section id="tab-payout" class="tab-content space-y-5">
+    <div class="hud-border bg-gradient-to-r from-[#171410] to-[#121319] p-4 rounded flex flex-col sm:flex-row justify-between sm:items-center gap-3 border border-orange-500/30">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-reign-accent animate-pulse"></span>
+          <h2 class="text-sm font-bold font-mono text-white tracking-wider">次回支給予定日: 毎月25日</h2>
+          <span class="px-2 py-0.5 rounded text-[10px] bg-red-500/20 text-red-400 border border-red-500/40 font-mono">※育成部門は報酬対象外</span>
+        </div>
+        <p class="text-xs text-reign-dim mt-1">報酬受取条件：受取後に <strong class="text-white">#REIGN報酬</strong> と <strong class="text-white">#REWIN</strong> を付けてチームをメンションしXへポスト</p>
+      </div>
+      <div class="flex gap-2">
+        <button id="btn-batch-salary-slips" class="px-3.5 py-2 bg-reign-accent text-black font-mono font-bold text-xs rounded hover:bg-orange-600 transition flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,85,0,0.3)]"><i class="fa-solid fa-images"></i> 明細カード一括出力</button>
+        <button id="btn-copy-payout-summary" class="px-3.5 py-2 bg-reign-card text-white border border-reign-border font-mono font-bold text-xs rounded hover:bg-[#1a1c26] transition flex items-center gap-1.5"><i class="fa-solid fa-paper-plane"></i> サマリーコピー</button>
+      </div>
+    </div>
+    <div class="hud-border bg-reign-card p-4 sm:p-5 rounded space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 border-b border-reign-border">
+        <div>
+          <label class="text-[11px] font-mono text-reign-dim block">月間プール予算（評価配分原資）</label>
+          <div class="flex items-center gap-1 mt-1"><span class="font-mono text-reign-accent font-bold">¥</span><input type="number" id="total-pool-budget" value="50000" step="1000" min="0" class="bg-[#15171e] font-mono font-black text-lg text-white w-full px-2 py-1 border border-reign-border rounded focus:outline-none focus:border-reign-accent"></div>
+          <span class="text-[10px] text-slate-500">※評価スコア比率で競技/ストリーマーへ按分</span>
+        </div>
+        <div><label class="text-[11px] font-mono text-reign-dim block">当月支給対象者数</label><div class="text-xl font-mono font-bold text-white mt-1.5" id="stat-eligible-count">0 人</div><span class="text-[10px] text-slate-500">（育成部門・加入日除外を除く）</span></div>
+        <div><label class="text-[11px] font-mono text-reign-dim block">確定総支給額（総合評価・計算済）</label><div class="text-xl font-mono font-black text-emerald-400 mt-1.5" id="stat-total-calculated-payout">¥0</div><span class="text-[10px] text-slate-500">25日に振り込む総額合計</span></div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs font-mono">
+          <thead><tr class="border-b border-reign-border text-reign-dim"><th class="py-2.5 px-2">選手 / メンバー名</th><th class="py-2.5 px-2">部門</th><th class="py-2.5 px-2">総合評価</th><th class="py-2.5 px-2">特別給/減額</th><th class="py-2.5 px-2">評価給配分</th><th class="py-2.5 px-2 text-right">当月確定支給額</th><th class="py-2.5 px-2 text-center">Xポスト文</th></tr></thead>
+          <tbody id="payout-table-body" class="divide-y divide-reign-border/40"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-activity" class="tab-content hidden space-y-5">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div class="hud-border bg-reign-card p-4 rounded space-y-3">
+        <div class="flex items-center gap-2 text-xs font-mono text-reign-accent font-bold uppercase"><i class="fa-solid fa-trophy"></i> 大会成績・報酬対象ログ記録</div>
+        <form id="activity-form" class="space-y-3 text-xs font-mono">
+          <div><label class="text-reign-dim block mb-1">対象メンバー *</label><select id="act-member" required class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent"></select></div>
+          <div>
+            <label class="text-reign-dim block mb-1">カテゴリー / 種別 *</label>
+            <select id="act-category" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white">
+              <option value="TOURNEY">🏆 評価対象大会（公式6大会）</option>
+              <option value="FNCS_DIV">⚡ FNCS突破報酬（Div加算）</option>
+              <option value="PRIZE_BONUS">💵 大会賞金獲得（$100還元）</option>
+              <option value="STREAM">📡 配信・動画再生（ストリーマー）</option>
+              <option value="CONTRIB">📋 チーム活動参加・貢献</option>
+            </select>
+          </div>
+          <div id="wrapper-tourney-type" class="space-y-1">
+            <label class="text-reign-dim block mb-1">評価対象大会</label>
+            <select id="act-tourney-type" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"><option value="①FNCS">① FNCS</option><option value="②ソロキャッシュ">② ソロキャッシュ</option><option value="③デュオキャッシュ">③ デュオキャッシュ</option><option value="④スキン大会">④ スキン大会</option><option value="⑤トリオキャッシュ">⑤ トリオキャッシュ</option><option value="⑥CCC">⑥ CCC</option><option value="OTHER">その他公式/対外戦</option></select>
+          </div>
+          <div id="wrapper-fncs-bonus" class="hidden space-y-1 bg-[#1a1412] p-2.5 rounded border border-orange-500/30">
+            <label class="text-orange-400 block font-bold">FNCS突破報酬（1stチーム対象）</label>
+            <select id="act-fncs-stage" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"><option value="DIV3">Div3突破報酬（+¥200）</option><option value="DIV2">Div2突破報酬（+¥500）</option><option value="DIV1_PRE">Div1予選突破報酬（+¥1,500）</option><option value="DIV1_FINAL">Div1決勝突破報酬（+¥3,000）</option></select>
+            <span class="text-[10px] text-slate-400 block">※すでに突破している方は付与されません</span>
+          </div>
+          <div id="wrapper-prize-usd" class="hidden space-y-1 bg-[#121a15] p-2.5 rounded border border-emerald-500/30">
+            <label class="text-emerald-400 block font-bold">獲得賞金 (USD $)</label>
+            <div class="flex items-center gap-2"><span class="text-emerald-400 font-bold">$</span><input type="number" id="act-prize-usd" value="100" min="0" step="50" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+            <span id="act-prize-calc-hint" class="text-[10px] text-emerald-300 block">支給額: +¥500 (99$以下切り捨て計算)</span>
+          </div>
+          <div>
+            <label class="text-reign-dim block mb-1">内容・順位・タイトル *</label>
+            <input type="text" id="act-title" required placeholder="例: デュオキャッシュ 12位, Div2突破" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent">
+            <div id="act-suggestions" class="flex flex-wrap gap-1 mt-2"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div><label class="text-reign-dim block mb-1">評価貢献度P (1〜100)</label><input type="number" id="act-points" min="0" max="100" value="15" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+            <div><label class="text-reign-dim block mb-1">日付 *</label><input type="date" id="act-date" required class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-reign-accent text-black font-bold uppercase rounded hover:bg-orange-600 transition mt-1">ログを記録する</button>
+        </form>
+      </div>
+      <div class="lg:col-span-2 hud-border bg-reign-card p-4 rounded space-y-3">
+        <div class="flex items-center justify-between border-b border-reign-border pb-2"><span class="text-xs font-mono text-white font-bold uppercase">大会・貢献記録一覧</span><span class="text-[10px] font-mono text-reign-dim" id="activity-count">0 件</span></div>
+        <div id="activity-log-list" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-roster" class="tab-content hidden space-y-5">
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div class="hud-border bg-reign-card p-3 rounded"><div class="text-[9px] font-mono text-reign-dim uppercase">総メンバー</div><div class="text-lg font-black font-mono text-white mt-0.5" id="stat-total-members">0</div></div>
+      <div class="hud-border bg-reign-card p-3 rounded"><div class="text-[9px] font-mono text-reign-dim uppercase">競技選手 (報酬対象)</div><div class="text-lg font-black font-mono text-reign-accent mt-0.5" id="stat-players">0</div></div>
+      <div class="hud-border bg-reign-card p-3 rounded"><div class="text-[9px] font-mono text-reign-dim uppercase">競技ZB部門</div><div class="text-lg font-black font-mono text-purple-400 mt-0.5" id="stat-zb-comp">0</div></div>
+      <div class="hud-border bg-reign-card p-3 rounded"><div class="text-[9px] font-mono text-reign-dim uppercase">育成枠 (報酬なし)</div><div class="text-lg font-black font-mono text-blue-400 mt-0.5" id="stat-acad">0</div></div>
+      <div class="hud-border bg-reign-card p-3 rounded"><div class="text-[9px] font-mono text-reign-dim uppercase">育成ZB部門</div><div class="text-lg font-black font-mono text-orange-400 mt-0.5" id="stat-zb-acad">0</div></div>
+      <div class="hud-border bg-reign-card p-3 rounded"><div class="text-[9px] font-mono text-reign-dim uppercase">ストリーマー</div><div class="text-lg font-black font-mono text-cyan-400 mt-0.5" id="stat-streamer">0</div></div>
+      <div class="hud-border bg-reign-card p-3 rounded"><div class="text-[9px] font-mono text-reign-dim uppercase">運営・支援</div><div class="text-lg font-black font-mono text-emerald-400 mt-0.5" id="stat-staff">0</div></div>
+    </div>
+    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+      <div class="flex flex-col sm:flex-row gap-2 flex-1">
+        <div class="relative flex-1"><input type="text" id="roster-search" placeholder="選手名 / IDで検索..." class="w-full bg-[#15171e] border border-reign-border rounded px-3 py-2 pl-9 text-xs focus:outline-none focus:border-reign-accent text-white font-mono"><i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-reign-dim text-xs"></i></div>
+        <select id="roster-filter-role" class="bg-[#15171e] border border-reign-border rounded px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-reign-accent">
+          <option value="ALL">全部門を表示</option><option value="SPONSOR">スポンサー部門</option><option value="MANAGEMENT">運営部門</option><option value="FN_COMP">🔴 Fortnite競技部門 (赤)</option><option value="FN_ACAD">🔵 Fortnite育成部門 (青)</option><option value="FN_ZB_COMP">🟣 Fortnite競技ゼロビルド部門 (紫)</option><option value="FN_ZB_ACAD">🟠 Fortnite育成ゼロビルド部門 (橙)</option><option value="FN_STREAMER">Fortniteストリーマー部門</option><option value="APEX_COMP">🔴 APEX選手部門 (赤)</option><option value="APEX_ACAD">🔵 APEX育成部門 (青)</option><option value="APEX_STREAMER">APEXストリーマー部門</option>
+        </select>
+      </div>
+      <button id="btn-open-member-modal" class="px-4 py-2.5 bg-reign-accent active:bg-orange-600 text-black font-mono font-bold text-xs uppercase rounded transition flex items-center justify-center gap-2"><i class="fa-solid fa-user-plus"></i> 新規メンバー登録</button>
+    </div>
+    <div id="roster-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+  </section>
+
+  <section id="tab-academy" class="tab-content hidden space-y-5">
+    <div class="hud-border bg-gradient-to-r from-[#101622] to-[#121319] p-4 rounded flex flex-col sm:flex-row justify-between sm:items-center gap-3 border border-blue-500/30">
+      <div>
+        <h2 class="text-sm font-bold font-mono text-blue-400 tracking-wider flex items-center gap-2"><i class="fa-solid fa-graduation-cap"></i> ACADEMY PROMOTION MISSIONS // 育成昇格プログラム</h2>
+        <p class="text-xs text-reign-dim mt-1">育成部門（FN育成 / ZB育成 / APEX育成）の昇格条件進捗を管理します。4項目クリアで正規競技部門へ即昇格！</p>
+      </div>
+      <span class="px-3 py-1 rounded bg-blue-500/20 border border-blue-500/40 text-blue-300 font-mono text-xs">育成対象者: <strong id="stat-academy-count">0</strong> 名</span>
+    </div>
+    <div id="academy-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+  </section>
+
+  <section id="tab-apex-squad" class="tab-content hidden space-y-5">
+    <div class="hud-border bg-reign-card p-4 rounded space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-reign-border pb-3">
+        <div><h3 class="text-xs font-mono text-reign-accent font-bold uppercase"><i class="fa-solid fa-crosshairs"></i> APEX 3人スクワッド編成ボード</h3><p class="text-[10px] text-reign-dim mt-1">固定チーム（IGL / Fragger / Support）の役割を管理します。</p></div>
+        <button id="btn-open-squad-modal" class="px-3 py-1.5 bg-[#1a1c26] text-reign-accent border border-reign-accent/50 hover:bg-reign-accent/20 text-xs font-mono rounded transition">新規部隊を追加</button>
+      </div>
+      <div id="apex-squad-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </section>
+
+  <section id="tab-custom" class="tab-content hidden space-y-5">
+    <div class="hud-border bg-reign-card p-4 sm:p-5 rounded space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-reign-border pb-3">
+        <div><h2 class="text-sm font-black font-mono text-reign-accent uppercase flex items-center gap-2"><i class="fa-solid fa-crown"></i> 賞金付きカスタム大会 運営リーダーボード</h2><p class="text-xs text-reign-dim mt-0.5">カスタムキー管理・毎試合の順位＆キル数自動集計・賞金受け渡し・Discord案内生成</p></div>
+        <div class="flex gap-2"><button id="btn-copy-custom-discord" class="px-3 py-1.5 bg-[#5865F2]/20 border border-[#5865F2] text-[#8ea1e1] hover:bg-[#5865F2] hover:text-white font-mono text-xs font-bold rounded transition flex items-center gap-1.5"><i class="fa-brands fa-discord"></i> 進行アナウンスコピー</button></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-[#14161f] p-3 rounded border border-reign-border text-xs font-mono">
+        <div><label class="text-reign-dim block mb-1">大会タイトル</label><input type="text" id="custom-title" value="REIGN CUP #1" class="w-full bg-black border border-reign-border rounded p-1.5 text-white"></div>
+        <div>
+          <label class="text-reign-dim block mb-1">カスタムキー</label>
+          <div class="flex gap-1"><input type="password" id="custom-key" value="REIGN2026" class="w-full bg-black border border-reign-border rounded p-1.5 text-orange-400 font-bold"><button type="button" id="btn-toggle-custom-key" class="px-2 bg-reign-card border border-reign-border rounded text-slate-300" title="表示切替"><i class="fa-solid fa-eye"></i></button><button type="button" id="btn-copy-custom-key" class="px-2 bg-reign-accent text-black font-bold rounded" title="キーをコピー"><i class="fa-solid fa-copy"></i></button></div>
+        </div>
+        <div><label class="text-reign-dim block mb-1">ポイントルール形式</label><select id="custom-rule" class="w-full bg-black border border-reign-border rounded p-1.5 text-white"><option value="SOLO_CASH">ソロキャッシュ形式</option><option value="FNCS">FNCS/デュオ形式</option><option value="SIMPLE">シンプル</option></select></div>
+        <div><label class="text-reign-dim block mb-1">賞金・景品メモ</label><input type="text" id="custom-prize" value="1位: PayPay 3,000円 / 2位: 1,500円" class="w-full bg-black border border-reign-border rounded p-1.5 text-emerald-400"></div>
+      </div>
+      <form id="custom-participant-form" class="flex flex-col sm:flex-row gap-2 text-xs font-mono">
+        <input type="text" id="cp-name" required placeholder="選手名 / チーム名 (例: Crown_ZB)" class="flex-1 bg-[#15171e] border border-reign-border rounded px-3 py-2 text-white">
+        <input type="text" id="cp-social" placeholder="X ID / PayPay・EpicIDメモ" class="flex-1 bg-[#15171e] border border-reign-border rounded px-3 py-2 text-white">
+        <button type="submit" class="px-4 py-2 bg-reign-accent text-black font-bold rounded hover:bg-orange-600 transition"><i class="fa-solid fa-plus"></i> 参加者を追加</button>
+        <button type="button" id="btn-reset-custom" class="px-3 py-2 bg-[#1a1315] border border-red-900/50 text-red-400 rounded hover:bg-red-950/40">リセット</button>
+      </form>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs font-mono">
+          <thead><tr class="border-b border-reign-border text-reign-dim"><th class="py-2 px-2">順位</th><th class="py-2 px-2">選手 / チーム名</th><th class="py-2 px-2 text-center">G1 (順位/キル)</th><th class="py-2 px-2 text-center">G2 (順位/キル)</th><th class="py-2 px-2 text-center">G3 (順位/キル)</th><th class="py-2 px-2 text-right">総合PT</th><th class="py-2 px-2 text-center">賞金送付</th><th class="py-2 px-2 text-center">削除</th></tr></thead>
+          <tbody id="custom-leaderboard-body" class="divide-y divide-reign-border/40"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-giveaway" class="tab-content hidden space-y-5">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-5 hud-border bg-reign-card p-4 rounded space-y-3 text-xs font-mono">
+        <div class="flex items-center justify-between border-b border-reign-border pb-2"><span class="text-reign-accent font-bold uppercase"><i class="fa-solid fa-users-viewfinder"></i> 応募者リスト＆重複除去</span><span id="gw-valid-count" class="text-emerald-400 font-bold">有効: 0 名</span></div>
+        <div><label class="text-reign-dim block mb-1">企画タイトル / 景品名</label><input type="text" id="gw-title" value="REIGN発足記念 1,500円分ギフト企画" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+        <div>
+          <div class="flex justify-between items-center mb-1"><label class="text-reign-dim">応募者IDリスト（改行区切りでコピペ）</label><button type="button" id="btn-gw-dedupe" class="text-reign-accent hover:underline font-bold"><i class="fa-solid fa-filter"></i> 重複・空白を自動整理</button></div>
+          <textarea id="gw-entries" rows="8" placeholder="@user1&#10;@user2&#10;@user1 (重複は自動除外されます)" class="w-full bg-[#121319] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent"></textarea>
+        </div>
+      </div>
+      <div class="lg:col-span-7 space-y-4">
+        <div id="gw-roulette-box" class="hud-border bg-gradient-to-b from-[#131520] to-[#0a0a0c] p-5 rounded-lg border-2 border-reign-border text-center space-y-4">
+          <div class="flex justify-between items-center text-[10px] font-mono text-reign-dim"><span>REIGN OFFICIAL FAIR LOTTERY SYSTEM</span><span class="text-reign-accent"><i class="fa-solid fa-video"></i> 画面録画してXに投稿可能</span></div>
+          <div class="bg-black/80 border border-reign-accent/40 rounded-lg py-6 px-4 shadow-inner">
+            <div class="text-[10px] font-mono text-slate-400 mb-1" id="gw-roulette-status">READY TO DRAW</div>
+            <div id="gw-roulette-display" class="text-2xl sm:text-4xl font-black font-mono text-white tracking-wider truncate">--- ??? ---</div>
+          </div>
+          <div class="flex flex-wrap justify-center gap-3">
+            <button id="btn-gw-spin" class="px-6 py-3 bg-reign-accent hover:bg-orange-600 text-black font-black font-mono text-sm rounded shadow-[0_0_20px_rgba(255,85,0,0.4)] transition flex items-center gap-2"><i class="fa-solid fa-shuffle"></i> 本当選を抽選する！</button>
+            <button id="btn-gw-spin-sub" class="px-4 py-3 bg-[#1a1c26] hover:bg-[#252836] border border-reign-border text-slate-200 font-bold font-mono text-xs rounded transition flex items-center gap-1.5"><i class="fa-solid fa-user-plus text-amber-400"></i> 補欠当選を引く</button>
+          </div>
+        </div>
+        <div class="hud-border bg-reign-card p-4 rounded space-y-3 text-xs font-mono">
+          <div class="flex justify-between items-center border-b border-reign-border pb-2"><span class="font-bold text-white uppercase"><i class="fa-solid fa-award text-amber-400"></i> 当選者一覧＆条件・送付管理</span><button id="btn-gw-clear-winners" class="text-[10px] text-reign-dim hover:text-red-400">履歴クリア</button></div>
+          <div id="gw-winners-list" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-calendar" class="tab-content hidden space-y-5">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-8 hud-border bg-reign-card p-4 rounded space-y-3 font-mono">
+        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-reign-border pb-3">
+          <div class="flex items-center gap-3">
+            <button id="cal-prev-month" class="p-1.5 bg-[#15171e] border border-reign-border rounded hover:text-reign-accent"><i class="fa-solid fa-chevron-left"></i></button>
+            <h2 id="cal-month-label" class="text-base font-black text-white">2026年 11月</h2>
+            <button id="cal-next-month" class="p-1.5 bg-[#15171e] border border-reign-border rounded hover:text-reign-accent"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+          <div class="flex gap-2">
+            <button id="btn-cal-preset-fn" class="px-2.5 py-1.5 bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 rounded text-[11px] font-bold"><i class="fa-solid fa-rotate"></i> FN公式大会日程を自動追加</button>
+            <button id="btn-cal-copy-week" class="px-2.5 py-1.5 bg-reign-accent text-black font-bold rounded text-[11px]"><i class="fa-solid fa-copy"></i> 予定一覧コピー</button>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-3 text-[10px] text-slate-400">
+          <span><span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1"></span>公式大会</span><span><span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>賞金付きカスタム</span><span><span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>スクリム・練習</span><span><span class="inline-block w-2 h-2 rounded-full bg-purple-400 mr-1"></span>面接</span><span><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>運営・25日支給日</span><span><span class="inline-block w-2 h-2 rounded-full bg-slate-400 mr-1"></span>その他</span>
+        </div>
+        <div class="grid grid-cols-7 text-center text-[11px] font-bold text-reign-dim pt-1"><div class="text-red-400">日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div class="text-blue-400">土</div></div>
+        <div id="calendar-days-grid" class="grid grid-cols-7 gap-1"></div>
+      </div>
+      <div class="lg:col-span-4 hud-border bg-reign-card p-4 rounded space-y-4 font-mono text-xs">
+        <div class="border-b border-reign-border pb-2"><span class="text-reign-accent font-bold uppercase"><i class="fa-solid fa-calendar-plus"></i> 予定の登録・詳細</span><div id="cal-selected-date-label" class="text-sm font-black text-white mt-1">日付を選択してください</div></div>
+        <form id="calendar-event-form" class="space-y-2.5">
+          <div><label class="text-reign-dim block mb-1">カテゴリー</label><select id="cal-event-type" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent"><option value="PRIZE">🟡 賞金付きカスタム</option><option value="OFFICIAL">🔴 公式大会 (FNCS/キャッシュ)</option><option value="SCRIM">🔵 スクリム・チーム練習</option><option value="INTERVIEW">🟣 面接</option><option value="OTHER">🟢 運営・25日支給日</option><option value="MISC">⚪ その他</option></select></div>
+          <div><label class="text-reign-dim block mb-1">イベント名 *</label><input type="text" id="cal-event-title" required placeholder="例: 〇〇さん 面接 / 賞金付きカスタム" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent"></div>
+          <div class="bg-[#121319] border border-reign-border/80 p-2.5 rounded space-y-2">
+            <div><label class="text-[10px] text-orange-400 font-bold block mb-1">開始日時</label><div class="grid grid-cols-5 gap-1.5"><input type="date" id="cal-event-start-date" required class="col-span-3 bg-[#15171e] border border-reign-border rounded p-1.5 text-white text-[11px] focus:outline-none focus:border-reign-accent"><input type="time" id="cal-event-start-time" class="col-span-2 bg-[#15171e] border border-reign-border rounded p-1.5 text-white text-[11px] focus:outline-none focus:border-reign-accent"></div></div>
+            <div><label class="text-[10px] text-slate-400 font-bold block mb-1">終了日時</label><div class="grid grid-cols-5 gap-1.5"><input type="date" id="cal-event-end-date" class="col-span-3 bg-[#15171e] border border-reign-border rounded p-1.5 text-white text-[11px] focus:outline-none focus:border-reign-accent"><input type="time" id="cal-event-end-time" class="col-span-2 bg-[#15171e] border border-reign-border rounded p-1.5 text-white text-[11px] focus:outline-none focus:border-reign-accent"></div></div>
+          </div>
+          <button type="submit" class="w-full py-2 bg-reign-accent text-black font-bold rounded hover:bg-orange-600 transition">予定を追加する</button>
+        </form>
+        <div class="space-y-2 pt-2 border-t border-reign-border"><div class="text-[11px] text-reign-dim font-bold">選択日のスケジュール一覧</div><div id="cal-day-events-list" class="space-y-1.5 max-h-[260px] overflow-y-auto"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-finance" class="tab-content hidden space-y-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+      <div class="hud-border bg-reign-card p-3.5 rounded"><div class="text-[10px] text-reign-dim uppercase">チーム現在残高 (累計収支)</div><div id="fin-balance" class="text-xl sm:text-2xl font-black text-white mt-1">¥0</div></div>
+      <div class="hud-border bg-reign-card p-3.5 rounded"><div class="text-[10px] text-reign-dim uppercase">収入合計 (スポンサー等)</div><div id="fin-total-income" class="text-xl sm:text-2xl font-black text-emerald-400 mt-1">+¥0</div></div>
+      <div class="hud-border bg-reign-card p-3.5 rounded"><div class="text-[10px] text-reign-dim uppercase">支出合計 (経費・企画費)</div><div id="fin-total-expense" class="text-xl sm:text-2xl font-black text-red-400 mt-1">-¥0</div></div>
+      <div class="hud-border bg-gradient-to-r from-[#191410] to-[#111217] p-3.5 rounded border border-orange-500/40"><div class="text-[10px] text-orange-300 uppercase">25日支給差引後の実質余力</div><div id="fin-after-payout" class="text-xl sm:text-2xl font-black text-reign-accent mt-1">¥0</div><div class="text-[9px] text-slate-400 mt-0.5" id="fin-payout-ref">※25日支給予定: ¥0 を差引済</div></div>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 font-mono text-xs">
+      <div class="hud-border bg-reign-card p-4 rounded space-y-3">
+        <div class="text-reign-accent font-bold uppercase"><i class="fa-solid fa-plus-circle"></i> 収支・経費を記録する</div>
+        <form id="finance-form" class="space-y-3">
+          <div class="grid grid-cols-2 gap-2"><div><label class="text-reign-dim block mb-1">種別</label><select id="fin-type" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"><option value="INCOME">＋ 収入 (入金)</option><option value="EXPENSE">－ 支出 (経費)</option></select></div><div><label class="text-reign-dim block mb-1">日付</label><input type="date" id="fin-date" required class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div></div>
+          <div><label class="text-reign-dim block mb-1">項目・内容 *</label><input type="text" id="fin-title" required placeholder="例: スポンサー協賛費 / 企画ギフト購入" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+          <div><label class="text-reign-dim block mb-1">金額 (円) *</label><input type="number" id="fin-amount" required min="1" placeholder="5000" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white font-bold"></div>
+          <button type="submit" class="w-full py-2.5 bg-reign-accent text-black font-bold rounded hover:bg-orange-600 transition">帳簿に記録する</button>
+        </form>
+      </div>
+      <div class="lg:col-span-2 hud-border bg-reign-card p-4 rounded space-y-3">
+        <div class="flex justify-between items-center border-b border-reign-border pb-2"><span class="font-bold text-white uppercase">チーム会計・入出金履歴</span><span id="fin-count" class="text-[10px] text-reign-dim">0 件</span></div>
+        <div id="finance-list" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-recruitment" class="tab-content hidden space-y-5">
+    <div class="hud-border bg-reign-card p-4 rounded space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+        <div><div class="text-xs font-mono text-reign-accent font-bold uppercase flex items-center gap-1.5"><i class="fa-solid fa-file-csv"></i> Googleフォーム / スプレッドシート回答取込</div><p class="text-xs text-reign-dim mt-0.5">スプレッドシートのURLを貼るか、CSV/PDFを選んで一発取り込み！（未記入はハイフン補完）</p></div>
+        <div class="flex flex-wrap gap-2">
+          <button id="btn-open-fields-settings" class="px-3 py-1.5 bg-[#1a1c26] hover:bg-[#232738] border border-orange-500/40 text-xs font-mono text-orange-300 rounded flex items-center gap-1.5 transition"><i class="fa-solid fa-sliders text-reign-accent"></i> フォーム項目設定</button>
+          <button id="btn-open-manual-applicant" class="px-3 py-1.5 bg-[#15171e] hover:bg-[#1c202a] border border-reign-border text-xs font-mono text-white rounded flex items-center gap-1"><i class="fa-solid fa-plus text-reign-accent"></i> 1件手動追加</button>
+        </div>
+      </div>
+      <div class="pt-2 border-t border-reign-border">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div class="bg-[#141620] border border-reign-accent/40 p-3 rounded space-y-2">
+            <div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-reign-accent text-black font-black flex items-center justify-center text-[10px]">1</span><span class="text-xs font-bold text-white font-mono">ファイルを選択 (PDF対応)</span></div>
+            <p class="text-[11px] text-slate-400">フォーム回答のCSV、またはPDF化したファイルを選んでください。</p>
+            <label for="csv-file-input" class="w-full py-2 bg-reign-accent/15 border border-reign-accent text-reign-accent hover:bg-reign-accent hover:text-black rounded font-mono font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition"><i class="fa-solid fa-file-arrow-up"></i> PDF / CSVファイルを選択</label>
+            <input type="file" id="csv-file-input" accept=".csv,.tsv,.txt,.pdf" class="hidden">
+          </div>
+          <div class="bg-[#141620] border border-reign-border p-3 rounded space-y-2">
+            <div class="flex items-center gap-2"><span class="w-5 h-5 rounded-full bg-slate-700 text-white font-black flex items-center justify-center text-[10px]">2</span><span class="text-xs font-bold text-white font-mono">スプレッドシートのURLから取込</span></div>
+            <p class="text-[11px] text-slate-400">「リンクを知っている全員が閲覧可」にしたURLを貼ってください。</p>
+            <div class="flex gap-1.5">
+              <input type="text" id="sheet-url-input" placeholder="https://docs.google.com/spreadsheets/d/..." class="flex-1 bg-[#0d0e13] border border-reign-border rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-reign-accent font-mono">
+              <button id="btn-fetch-sheet-url" class="px-3 py-1.5 bg-[#232738] hover:bg-reign-accent hover:text-black text-white text-xs font-mono rounded font-bold transition">取得</button>
+            </div>
+          </div>
+        </div>
+        <details class="bg-[#101116] border border-reign-border/80 rounded p-2 text-xs font-mono">
+          <summary class="cursor-pointer text-slate-300 font-bold hover:text-reign-accent flex items-center justify-between"><span><i class="fa-solid fa-clipboard text-reign-accent mr-1"></i> 方法3: コピペで直接貼り付けたい場合はこちら</span><span class="text-[10px] text-slate-500">クリックで開く</span></summary>
+          <div class="space-y-2 mt-2 pt-2 border-t border-reign-border">
+            <div class="flex justify-between items-center text-[11px] text-slate-400"><span>スプレッドシートのセルをコピーして貼り付け：</span><button id="btn-demo-recruit" class="text-reign-accent hover:underline">※公式20項目のサンプルデータを貼る</button></div>
+            <textarea id="tsv-paste-input" rows="3" placeholder="ヘッダー行を含めてスプレッドシートのセルをそのまま貼り付け" class="w-full bg-[#121319] border border-reign-border rounded p-2 text-xs text-white focus:outline-none focus:border-reign-accent"></textarea>
+            <div class="flex justify-end"><button id="btn-analyze-paste" class="px-4 py-2 bg-reign-accent text-black font-mono font-bold text-xs rounded hover:bg-orange-600 transition">貼り付けたテキストを解析</button></div>
+          </div>
+        </details>
+        <div id="mapping-panel" class="hidden bg-[#151722] border-2 border-orange-500/60 p-4 rounded-lg space-y-3 mt-3 shadow-2xl">
+          <div class="flex items-center justify-between border-b border-reign-border pb-2"><span class="text-xs font-mono font-bold text-orange-400 flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles"></i> スプレッドシートの自動解析結果</span><span id="detected-rows-count" class="text-xs font-mono text-emerald-400 font-bold">検知: 0 件</span></div>
+          <p class="text-[11px] text-slate-300">各質問項目が自動で割り当てられています。もしズレている項目があれば変更してください：</p>
+          <div id="dynamic-mapping-selectors" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs font-mono"></div>
+          <div class="pt-2 flex flex-col sm:flex-row justify-between items-center gap-2 border-t border-reign-border"><div id="mapping-sample-preview" class="text-[11px] font-mono text-slate-400 truncate max-w-full"></div><button id="btn-commit-import" class="w-full sm:w-auto px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-black font-black font-mono text-xs rounded transition flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.4)]"><i class="fa-solid fa-check"></i> この内容で応募一覧に反映する</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xs font-mono text-white uppercase font-bold">応募審査パイプライン (<span id="recruit-count">0</span>)</h3>
+        <div class="flex gap-2 items-center">
+          <div class="flex gap-1">
+            <button class="recruit-filter-btn px-2 py-0.5 text-[10px] font-mono rounded bg-reign-accent text-black font-bold" data-status="ALL">ALL</button>
+            <button class="recruit-filter-btn px-2 py-0.5 text-[10px] font-mono rounded bg-[#15171e] text-reign-dim" data-status="NEW">新規</button>
+            <button class="recruit-filter-btn px-2 py-0.5 text-[10px] font-mono rounded bg-[#15171e] text-reign-dim" data-status="REVIEW">審査中</button>
+            <button class="recruit-filter-btn px-2 py-0.5 text-[10px] font-mono rounded bg-[#15171e] text-reign-dim" data-status="PASS">合格</button>
+            <button class="recruit-filter-btn px-2 py-0.5 text-[10px] font-mono rounded bg-[#15171e] text-reign-dim" data-status="REJECT">見送り</button>
+          </div>
+          <select id="bulk-delete-action" class="bg-[#1a1315] text-red-400 border border-red-900/50 rounded px-2 py-0.5 text-[10px] font-mono focus:outline-none">
+            <option value="">一括削除...</option><option value="REJECT">「見送り」のみ削除</option><option value="ALL">全件削除</option>
+          </select>
+        </div>
+      </div>
+      <div id="applicant-list" class="grid grid-cols-1 gap-2.5"></div>
+    </div>
+  </section>
+
+  <section id="tab-notes" class="tab-content hidden space-y-5">
+    <div class="hud-border bg-reign-card p-4 sm:p-5 rounded space-y-4">
+      <div class="border-b border-reign-border pb-3 flex justify-between items-center"><h2 class="text-sm font-black font-mono text-white uppercase"><i class="fa-solid fa-pen-to-square text-reign-accent"></i> 運営メモ / 戦略ノート</h2></div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="md:col-span-1">
+          <form id="note-form" class="space-y-3 text-xs font-mono">
+            <input type="text" id="n-title" required placeholder="メモのタイトル" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent">
+            <textarea id="n-content" required rows="6" placeholder="ミーティング議事録や伝達事項..." class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent"></textarea>
+            <button type="submit" class="w-full py-2 bg-reign-accent text-black font-bold uppercase rounded hover:bg-orange-600 transition">保存する</button>
+          </form>
+        </div>
+        <div class="md:col-span-2"><div id="notes-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-rules" class="tab-content hidden space-y-4">
+    <div class="hud-border bg-reign-card p-5 rounded space-y-4">
+      <div class="border-b border-reign-border pb-3 flex justify-between items-center">
+        <div><h2 class="text-base font-black font-mono text-white">REIGN Esports 報酬制度規定</h2><p class="text-xs text-reign-accent font-mono mt-0.5">2026年9月25日 更新版</p></div>
+        <span class="px-2.5 py-1 rounded bg-reign-border text-slate-300 font-mono text-xs">公式規約</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+        <div class="bg-[#14161f] border border-reign-border p-3.5 rounded space-y-2">
+          <h3 class="font-bold text-orange-400 flex items-center gap-1.5"><i class="fa-solid fa-calendar-check"></i> 基本支払ルール</h3>
+          <ul class="list-disc list-inside space-y-1 text-slate-300"><li><strong>報酬は原則、毎月25日にまとめて支払い</strong></li><li><strong>19日〜31日（月末）までに加入された方は、加入された月の固定給はありません</strong></li><li><strong>育成部門は報酬対象外（育成・スキルアップ期間）</strong></li></ul>
+        </div>
+        <div class="bg-[#14161f] border border-reign-border p-3.5 rounded space-y-2">
+          <h3 class="font-bold text-blue-400 flex items-center gap-1.5"><i class="fa-brands fa-x-twitter"></i> X（Twitter）報告義務</h3>
+          <ul class="list-disc list-inside space-y-1 text-slate-300"><li>報酬受取時: <code class="text-reign-accent">#REIGN報酬</code> と <code class="text-reign-accent">#REWIN</code> のタグをつけてチームメンションしてポスト必須</li><li>大会成績時: <code class="text-reign-accent">#REWIN</code> とチームメンションをつけて結果をポスト</li></ul>
+        </div>
+        <div class="bg-[#14161f] border border-reign-border p-3.5 rounded space-y-2">
+          <h3 class="font-bold text-red-400 flex items-center gap-1.5"><i class="fa-solid fa-gamepad"></i> 評価対象大会（6種）</h3>
+          <div class="grid grid-cols-2 gap-1 text-slate-300 pt-1"><div>① FNCS</div><div>② ソロキャッシュ</div><div>③ デュオキャッシュ</div><div>④ スキン大会</div><div>⑤ トリオキャッシュ</div><div>⑥ CCC</div></div>
+          <p class="text-[10px] text-slate-400 mt-2">※競技部門給：①大会成績 ②参加率 ③貢献率の総合評価</p>
+        </div>
+        <div class="bg-[#14161f] border border-reign-border p-3.5 rounded space-y-2">
+          <h3 class="font-bold text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-sack-dollar"></i> 特典ボーナス体系</h3>
+          <div class="space-y-1.5 text-slate-300">
+            <div><span class="text-orange-300 font-bold">【FNCS突破報酬】</span> ※1stチーム対象（既突破除く）<div class="text-[11px] text-slate-400 pl-2">Div3: ¥200 / Div2: ¥500 / Div1予選: ¥1,500 / Div1決勝: ¥3,000</div></div>
+            <div><span class="text-emerald-300 font-bold">【賞金獲得報酬】</span><div class="text-[11px] text-slate-400 pl-2">$100 / ¥500（$99以下は切り捨て）</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- MODALS -->
+<div id="member-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+  <div class="hud-border bg-reign-card border border-reign-border w-full max-w-lg rounded-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between border-b border-reign-border pb-2"><h3 id="modal-title" class="text-xs font-bold font-mono text-white uppercase">メンバー登録 // REIGN OS</h3><button id="btn-close-member-modal" class="text-reign-dim hover:text-white p-1"><i class="fa-solid fa-xmark text-sm"></i></button></div>
+    <form id="member-form" class="space-y-3 text-xs font-mono">
+      <input type="hidden" id="m-id">
+      <div><label class="text-reign-dim block mb-1">名前 / プレイヤーID *</label><input type="text" id="m-name" required placeholder="例: Crown, Rex" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div><label class="text-reign-dim block mb-1">所属部門 *</label><select id="m-role" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"><option value="FN_COMP">🔴 Fortnite競技部門 (赤)</option><option value="FN_ZB_COMP">🟣 Fortnite競技ゼロビルド部門 (紫)</option><option value="FN_ACAD">🔵 Fortnite育成部門 (青)</option><option value="FN_ZB_ACAD">🟠 Fortnite育成ゼロビルド部門 (橙)</option><option value="FN_STREAMER">Fortniteストリーマー部門</option><option value="APEX_COMP">🔴 APEX選手部門 (赤)</option><option value="APEX_ACAD">🔵 APEX育成部門 (青)</option><option value="APEX_STREAMER">APEXストリーマー部門</option><option value="MANAGEMENT">運営部門</option><option value="SPONSOR">スポンサー部門</option></select></div>
+        <div><label class="text-reign-dim block mb-1">ステータス</label><select id="m-status" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"><option value="ACTIVE">ACTIVE (正規所属)</option><option value="TRIAL">TRIAL (お試し)</option><option value="INACTIVE">INACTIVE (休止中)</option></select></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div><label class="text-reign-dim block mb-1">加入日 *</label><input type="date" id="m-joindate" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+        <div class="flex items-center pt-5"><label class="flex items-center gap-2 cursor-pointer text-slate-300"><input type="checkbox" id="m-late-join" class="rounded bg-black border-reign-border text-reign-accent"><span class="text-[11px]">19日〜31日加入 (初月固定給無)</span></label></div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div><label class="text-reign-dim block mb-1">X (Twitter) URL</label><input type="text" id="m-twitter" placeholder="https://x.com/username" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+        <div><label class="text-reign-dim block mb-1">Discord ID</label><input type="text" id="m-discord" placeholder="username#0000" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+      </div>
+      <div><label class="text-reign-dim block mb-1">備考 / ロール詳細 / 実績</label><textarea id="m-notes" rows="2" placeholder="担当、得意武器、過去の大会実績など" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></textarea></div>
+      <div class="pt-2 flex justify-end gap-2"><button type="button" id="btn-cancel-member-modal" class="px-3 py-1.5 bg-reign-card border border-reign-border text-reign-dim rounded">キャンセル</button><button type="submit" class="px-4 py-1.5 bg-reign-accent text-black font-bold uppercase rounded">保存する</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="member-detail-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-5 hidden">
+  <div class="hud-border bg-reign-card border border-reign-border w-full max-w-4xl rounded-lg flex flex-col max-h-[90vh] overflow-hidden shadow-2xl">
+    <div class="p-4 border-b border-reign-border flex justify-between items-center bg-[#0a0a0c]">
+      <div><h3 id="md-name" class="text-lg font-black font-mono text-white inline mr-2"></h3><span id="md-role"></span><span id="md-status" class="ml-2 text-xs font-mono"></span></div>
+      <div class="flex gap-3 items-center"><a id="md-x-link" href="#" target="_blank" class="text-reign-dim hover:text-white text-lg hidden" title="X (Twitter) を開く"><i class="fa-brands fa-x-twitter"></i></a><button id="btn-close-md" class="text-reign-dim hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button></div>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="space-y-4">
+          <div class="bg-[#121319] p-3 rounded border border-reign-border/60 text-xs font-mono text-slate-300 space-y-1.5">
+            <div><span class="text-reign-dim w-20 inline-block">Discord:</span><span id="md-discord">-</span></div>
+            <div><span class="text-reign-dim w-20 inline-block">加入日:</span><span id="md-join">-</span></div>
+            <div><span class="text-reign-dim w-20 inline-block align-top">備考:</span><span id="md-notes" class="inline-block w-[calc(100%-80px)] whitespace-pre-wrap">-</span></div>
+          </div>
+          <div class="hud-border bg-[#13151f] p-4 rounded border border-orange-500/40">
+            <div class="flex justify-between items-center mb-3"><span class="text-xs font-bold text-reign-accent font-mono"><i class="fa-solid fa-chart-line"></i> 月間査定・給与設定</span><button id="btn-gen-slip-indiv" class="px-2 py-1 bg-orange-500 hover:bg-orange-400 text-black font-bold font-mono text-[10px] rounded shadow-[0_0_8px_rgba(255,85,0,0.4)] transition"><i class="fa-solid fa-eye"></i> 明細プレビュー</button></div>
+            <form id="eval-form" class="space-y-3 text-xs font-mono">
+              <div class="grid grid-cols-3 gap-2 text-slate-300">
+                <div><label class="block mb-1 text-[10px]">大会成績 (1-5)</label><select id="e-tourney" class="w-full bg-black border border-reign-border rounded p-1.5"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select></div>
+                <div><label class="block mb-1 text-[10px]">SNS活動 (1-5)</label><select id="e-sns" class="w-full bg-black border border-reign-border rounded p-1.5"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select></div>
+                <div><label class="block mb-1 text-[10px]">貢献率 (1-5)</label><select id="e-contrib" class="w-full bg-black border border-reign-border rounded p-1.5"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select></div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-slate-300">
+                <div><label class="block mb-1 text-[10px]">総合評価</label><select id="e-grade" class="w-full bg-black border border-reign-border rounded p-1.5 text-orange-400 font-bold"><option>S</option><option>A+</option><option>A</option><option>B+</option><option selected>B</option><option>C</option></select></div>
+                <div><label class="block mb-1 text-[10px]">昇降格判定</label><select id="e-promo" class="w-full bg-black border border-reign-border rounded p-1.5"><option value="">現状維持</option><option value="PROMOTION" class="text-emerald-400">昇格あり</option><option value="DEMOTION" class="text-red-400">降格あり</option></select></div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-slate-300">
+                <div><label class="block mb-1 text-[10px]">基本給・評価給 (¥)</label><input type="number" id="e-base" value="0" class="w-full bg-black border border-reign-border rounded p-1.5"></div>
+                <div><label class="block mb-1 text-[10px]">特別給与 / 賞金 (¥)</label><input type="number" id="e-special" value="0" class="w-full bg-black border border-reign-border rounded p-1.5 text-emerald-400"></div>
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-slate-300 items-end">
+                <div class="col-span-2"><label class="block mb-1 text-[10px] text-red-400">警告・ペナルティ理由</label><input type="text" id="e-reason" placeholder="遅刻 / 無断欠席など" class="w-full bg-black border border-reign-border rounded p-1.5"></div>
+                <div><label class="block mb-1 text-[10px] text-red-400">減額 (¥)</label><input type="number" id="e-penalty" value="0" min="0" class="w-full bg-[#2a1215] border border-red-500/50 rounded p-1.5 text-red-400"></div>
+              </div>
+              <button type="submit" class="w-full py-2.5 bg-reign-accent text-black font-bold uppercase rounded mt-2 hover:bg-orange-600 transition">査定データを保存・反映</button>
+            </form>
+          </div>
+        </div>
+        <div class="space-y-3 flex flex-col h-full"><span class="text-xs font-mono font-bold text-white uppercase flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-reign-dim"></i> 過去の大会実績・貢献履歴</span><div id="md-history-list" class="flex-1 bg-[#121319] border border-reign-border/60 rounded p-2 overflow-y-auto space-y-2 min-h-[200px]"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="applicant-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+  <div class="hud-border bg-reign-card border border-reign-border w-full max-w-lg rounded-lg p-5 space-y-3 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between border-b border-reign-border pb-2"><h3 id="applicant-modal-title" class="text-xs font-bold font-mono text-white uppercase">応募者の追加 / 編集</h3><button id="btn-close-applicant-modal" class="text-reign-dim hover:text-white p-1"><i class="fa-solid fa-xmark text-sm"></i></button></div>
+    <form id="applicant-form" class="space-y-3 text-xs font-mono">
+      <input type="hidden" id="app-id">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div><label class="text-reign-accent font-bold block mb-1">名前 / プレイヤー名 *</label><input type="text" id="app-name" required placeholder="例: ApexStriker" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white focus:outline-none focus:border-reign-accent"></div>
+        <div><label class="text-reign-accent font-bold block mb-1">希望部門 *</label><select id="app-role" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"><option value="FN_COMP">🔴 Fortnite競技部門 (赤)</option><option value="FN_ZB_COMP">🟣 Fortnite競技ゼロビルド部門 (紫)</option><option value="FN_ACAD">🔵 Fortnite育成部門 (青)</option><option value="FN_ZB_ACAD">🟠 Fortnite育成ゼロビルド部門 (橙)</option><option value="FN_STREAMER">Fortniteストリーマー部門</option><option value="APEX_COMP">🔴 APEX選手部門 (赤)</option><option value="APEX_ACAD">🔵 APEX育成部門 (青)</option><option value="APEX_STREAMER">APEXストリーマー部門</option><option value="MANAGEMENT">運営部門</option><option value="SPONSOR">スポンサー部門</option></select></div>
+      </div>
+      <div id="dynamic-applicant-fields" class="space-y-2.5 pt-1"></div>
+      <div class="pt-2 flex justify-end gap-2 border-t border-reign-border/60"><button type="button" id="btn-cancel-applicant-modal" class="px-3 py-1.5 bg-reign-card border border-reign-border text-reign-dim rounded">キャンセル</button><button type="submit" class="px-4 py-1.5 bg-reign-accent text-black font-bold uppercase rounded">保存</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="fields-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 hidden">
+  <div class="hud-border bg-reign-card border border-reign-border w-full max-w-lg rounded-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between border-b border-reign-border pb-2.5">
+      <div><h3 class="text-xs font-bold font-mono text-white uppercase flex items-center gap-1.5"><i class="fa-solid fa-sliders text-reign-accent"></i> 応募フォーム項目のカスタマイズ</h3><p class="text-[10px] text-reign-dim font-mono mt-0.5">Googleフォームの質問に合わせて自由に項目を調整できます</p></div>
+      <button id="btn-close-fields-modal" class="text-reign-dim hover:text-white p-1"><i class="fa-solid fa-xmark text-sm"></i></button>
+    </div>
+    <div class="space-y-2">
+      <div class="flex justify-between items-center text-xs font-mono text-slate-300"><span>設定中の項目一覧</span><button id="btn-add-new-field" class="px-2.5 py-1 bg-reign-accent/20 border border-reign-accent text-reign-accent hover:bg-reign-accent hover:text-black rounded text-[11px] font-bold transition flex items-center gap-1"><i class="fa-solid fa-plus"></i> 新しい項目を追加</button></div>
+      <div id="custom-fields-list" class="space-y-2 max-h-[300px] overflow-y-auto pr-1"></div>
+    </div>
+    <div class="pt-2 flex justify-end gap-2 border-t border-reign-border/60"><button type="button" id="btn-save-fields" class="px-4 py-2 bg-reign-accent text-black font-bold font-mono text-xs uppercase rounded hover:bg-orange-600 transition">設定を保存する</button></div>
+  </div>
+</div>
+
+<div id="squad-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+  <div class="hud-border bg-reign-card border border-reign-border w-full max-w-sm rounded-lg p-5 space-y-3">
+    <div class="flex items-center justify-between border-b border-reign-border pb-2"><h3 class="text-xs font-bold font-mono text-reign-accent">APEXスクワッド編成</h3><button id="btn-close-squad" class="text-reign-dim hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
+    <form id="squad-form" class="space-y-3 text-xs font-mono">
+      <input type="hidden" id="sq-id">
+      <div><label class="text-reign-dim block mb-1">部隊名 (例: Team A / メイン部隊)</label><input type="text" id="sq-name" required placeholder="Team Name" class="w-full bg-[#15171e] border border-reign-border rounded p-2 text-white"></div>
+      <div class="space-y-2">
+        <div><label class="text-slate-300 block mb-1 font-bold">IGL (オーダー)</label><select id="sq-p1" class="w-full bg-black border border-reign-accent/50 rounded p-2 text-white"></select></div>
+        <div><label class="text-slate-300 block mb-1 font-bold">Fragger (前衛)</label><select id="sq-p2" class="w-full bg-black border border-reign-accent/50 rounded p-2 text-white"></select></div>
+        <div><label class="text-slate-300 block mb-1 font-bold">Support (後衛)</label><select id="sq-p3" class="w-full bg-black border border-reign-accent/50 rounded p-2 text-white"></select></div>
+      </div>
+      <button type="submit" class="w-full py-2 bg-reign-accent text-black font-bold rounded mt-2">編成を保存</button>
+    </form>
+  </div>
+</div>
+
+<div id="slip-preview-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md z-[60] flex flex-col items-center justify-center p-4 sm:p-8 hidden overflow-y-auto">
+  <div class="w-full max-w-[380px] flex justify-between items-center mb-4 mt-auto">
+    <h3 class="text-white font-mono font-bold text-sm tracking-wider"><i class="fa-solid fa-eye text-reign-accent"></i> CARD PREVIEW</h3>
+    <button id="btn-close-slip-preview" class="text-reign-dim hover:text-white text-2xl transition-transform hover:rotate-90"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div id="slip-template" class="slip-card-bg hud-border border border-orange-500/50 rounded-xl p-6 text-white font-mono space-y-4 w-[380px] shrink-0 mx-auto">
+    <div class="flex justify-between border-b border-reign-border pb-3">
+      <div><div class="font-black text-xl tracking-tighter text-reign-accent">REIGN</div><div class="text-[8px] text-slate-400 tracking-widest">OFFICIAL SALARY SLIP</div></div>
+      <div class="text-right"><div id="slip-date" class="font-bold text-slate-300 text-xs mt-1"></div></div>
+    </div>
+    <div class="bg-black/60 p-4 rounded-lg border border-reign-accent/30 shadow-[0_0_15px_rgba(255,85,0,0.1)]">
+      <div id="slip-name" class="text-2xl font-black truncate"></div>
+      <div id="slip-role" class="text-[10px] text-slate-400 mt-1 inline-block px-1.5 py-0.5 border border-slate-700 rounded"></div>
+      <div class="mt-3 flex items-baseline gap-2"><span class="text-xs text-slate-400">Total Grade:</span><span class="text-3xl font-black text-orange-400 drop-shadow-[0_0_8px_rgba(255,85,0,0.8)]" id="slip-grade"></span></div>
+    </div>
+    <div class="text-[11px] text-slate-300 space-y-2 bg-[#121319] p-3 rounded border border-reign-border">
+      <div class="flex justify-between border-b border-reign-border/50 pb-1"><span>Base Salary / 評価給</span><span id="slip-base" class="font-bold"></span></div>
+      <div class="flex justify-between text-emerald-400 border-b border-reign-border/50 pb-1"><span>Special / 大会賞金還元等</span><span id="slip-special" class="font-bold"></span></div>
+      <div class="flex justify-between text-red-400"><span>Penalty / 減額</span><span id="slip-penalty" class="font-bold"></span></div>
+    </div>
+    <div class="pt-2 flex justify-between items-end border-t border-reign-border">
+      <span class="text-[10px] text-slate-500">※支給要件: #REIGN報酬 #REWIN</span>
+      <div class="text-right"><div class="text-[10px] text-slate-400">TOTAL PAYOUT</div><div id="slip-final" class="text-2xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div></div>
+    </div>
+  </div>
+  <div class="mt-6 w-full max-w-[380px] mb-auto">
+    <button id="btn-execute-slip-download" class="w-full py-3.5 bg-reign-accent text-black font-black font-mono text-sm rounded shadow-[0_0_15px_rgba(255,85,0,0.4)] hover:bg-orange-600 active:scale-95 transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-download"></i> <span id="slip-dl-btn-text">画像をダウンロード</span></button>
+    <p id="slip-batch-hint" class="text-center text-[10px] text-slate-400 mt-2 hidden">※プレビューには1人目のデータが表示されています。ダウンロードを押すと全員分が順次保存されます。</p>
+  </div>
+</div>
+
+<footer class="border-t border-reign-border/60 py-3 px-4 text-center text-[10px] font-mono text-reign-dim">REIGN Esports Operations // <span class="text-reign-accent">#REIGN_Esports</span> #REWIN #REIGN報酬</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+const DEPARTMENTS = {
+  SPONSOR: { label: 'スポンサー部門', hasSalary: false, badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' },
+  MANAGEMENT: { label: '運営部門', hasSalary: true, badgeClass: 'bg-slate-500/20 text-slate-300 border-slate-500/50' },
+  FN_COMP: { label: '🔴 FN競技部門', hasSalary: true, badgeClass: 'bg-red-500/20 text-red-400 border-red-500/60 shadow-[0_0_8px_rgba(239,68,68,0.3)]' },
+  FN_ACAD: { label: '🔵 FN育成部門', hasSalary: false, badgeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.3)]' },
+  FN_ZB_COMP: { label: '🟣 FN競技ZB', hasSalary: true, badgeClass: 'bg-purple-500/20 text-purple-400 border-purple-500/60 shadow-[0_0_8px_rgba(168,85,247,0.3)]' },
+  FN_ZB_ACAD: { label: '🟠 FN育成ZB', hasSalary: false, badgeClass: 'bg-orange-500/20 text-orange-400 border-orange-500/60 shadow-[0_0_8px_rgba(249,115,22,0.3)]' },
+  FN_STREAMER: { label: 'ストリーマー', hasSalary: true, badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+  APEX_COMP: { label: '🔴 APEX選手部門', hasSalary: true, badgeClass: 'bg-red-500/20 text-red-400 border-red-500/60 shadow-[0_0_8px_rgba(239,68,68,0.3)]' },
+  APEX_ACAD: { label: '🔵 APEX育成部門', hasSalary: false, badgeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.3)]' },
+  APEX_STREAMER: { label: 'APEX配信', hasSalary: true, badgeClass: 'bg-pink-500/20 text-pink-300 border-pink-500/40' }
+};
+
+const FNCS_RATES = { DIV3: 200, DIV2: 500, DIV1_PRE: 1500, DIV1_FINAL: 3000 };
+
+const DEFAULT_FORM_FIELDS = [
+  { id: 'f_name', label: '活動名を教えてください。', type: 'text', keywords: ['活動名'] },
+  { id: 'f_age', label: '年齢を教えてください。', type: 'text', keywords: ['年齢'] },
+  { id: 'f_device', label: '使用機種を教えてください。', type: 'text', keywords: ['機種'] },
+  { id: 'f_x', label: 'Xアカウントのリンク', type: 'text', keywords: ['xアカウント', 'twitter'] },
+  { id: 'f_tracker', label: 'Fortnite Trackerのリンク', type: 'text', keywords: ['tracker'] },
+  { id: 'f_discord', label: 'DiscordID', type: 'text', keywords: ['discord'] },
+  { id: 'f_best', label: '最高成績（ない場合は最高ランク）', type: 'textarea', keywords: ['最高成績', 'ランク'] },
+  { id: 'f_reason', label: 'チームに応募した理由', type: 'textarea', keywords: ['応募した理由'] },
+  { id: 'f_pr', label: 'アピールポイント', type: 'textarea', keywords: ['アピールポイント'] },
+  { id: 'f_ideal', label: '自分の思い描く理想の選手像', type: 'textarea', keywords: ['理想の選手像'] },
+  { id: 'f_time', label: '1日の平均プレイ時間', type: 'text', keywords: ['プレイ時間'] },
+  { id: 'f_routine', label: 'ゲームを起動してからのルーティーン', type: 'textarea', keywords: ['ルーティーン'] },
+  { id: 'f_other1', label: '現在、他のチームに同時応募はしていますか？', type: 'text', keywords: ['同時応募'] },
+  { id: 'f_other2', label: 'これから先、他のチームに応募する可能性', type: 'text', keywords: ['今後'] },
+  { id: 'f_procon', label: '自分の長所と短所', type: 'textarea', keywords: ['長所と短所'] },
+  { id: 'f_skill', label: '一番伸ばしたい能力', type: 'textarea', keywords: ['伸ばしたい能力'] },
+  { id: 'f_ban', label: '規約違反や犯罪行為の有無', type: 'text', keywords: ['規約違反'] },
+  { id: 'f_agree', label: '規約に同意しますか？', type: 'text', keywords: ['規約に同意'] }
+];
+
+const state = {
+  members: [], activities: [], applicants: [], formFields: [],
+  notes: [], apexSquads: [],
+  giveaways: { title: 'REIGN発足記念 1,500円分ギフト企画', entries: '', winners: [] },
+  customTourney: { title: 'REIGN CUP #1', key: 'REIGN2026', rule: 'SOLO_CASH', prize: '1位: PayPay 3,000円 / 2位: 1,500円', participants: [] },
+  finances: [], calendarEvents: [], academyMissions: {},
+  filterRole: 'ALL', searchQuery: '', applicantFilter: 'ALL', parsedPasteRows: [],
+  calYear: new Date().getFullYear(), calMonth: new Date().getMonth(), calSelectedDate: new Date().toISOString().split('T')[0], latestCalculatedPayout: 0
+};
+
+let slipDownloadTarget = null;
+
+const escapeHtml = (str) => {
+  if (str === undefined || str === null || str === '') return '-'; 
+  return String(str).replace(/[&<>'"]/g, t => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[t] || t));
+};
+
+const showToast = (msg, isError = false) => {
+  const t = $('toast'); if (!t) return;
+  $('toast-message').textContent = msg;
+  $('toast-icon').className = isError ? 'fa-solid fa-triangle-exclamation text-reign-red' : 'fa-solid fa-bolt text-reign-accent';
+  t.classList.remove('translate-y-[-160%]', 'opacity-0'); t.classList.add('translate-y-0', 'opacity-100');
+  setTimeout(() => { t.classList.remove('translate-y-0', 'opacity-100'); t.classList.add('translate-y-[-160%]', 'opacity-0'); }, 2500);
+};
+
+const copyTextSafe = (text) => {
+  const ta = document.createElement('textarea'); ta.value = text;
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+};
+
+function initData() {
+  try {
+    ['members', 'activities', 'applicants', 'notes', 'apexSquads', 'finances', 'calendarEvents'].forEach(k => {
+      state[k] = JSON.parse(localStorage.getItem('reign_' + k) || '[]');
+    });
+    state.formFields = JSON.parse(localStorage.getItem('reign_form_fields') || 'null') || [...DEFAULT_FORM_FIELDS];
+    state.giveaways = JSON.parse(localStorage.getItem('reign_giveaways') || 'null') || state.giveaways;
+    state.customTourney = JSON.parse(localStorage.getItem('reign_custom_tourney') || 'null') || state.customTourney;
+    state.academyMissions = JSON.parse(localStorage.getItem('reign_academy_missions') || '{}');
+  } catch(e) { state.formFields = [...DEFAULT_FORM_FIELDS]; }
+
+  if (state.members.length === 0) {
+    state.members = [
+      { id: 1, name: 'Crown_ZB', role: 'FN_ZB_COMP', status: 'ACTIVE', twitter: 'https://x.com/crown_reign', discord: 'crown#7701', lateJoin: false, joinDate: '2026-08-10', notes: 'FNCS ゼロビルドファイナリスト / IGL', eval: {grade:'A+', base:5000, special:1500, penalty:0, tourney:4, sns:4, contrib:5} },
+      { id: 2, name: 'NovaFN', role: 'FN_COMP', status: 'ACTIVE', twitter: 'https://x.com/nova_build', discord: 'nova#1199', lateJoin: false, joinDate: '2026-07-01', notes: 'Fortnite競技部門 メインFragger', eval: {grade:'B', base:3000, special:0, penalty:500, reason:'遅刻'} },
+      { id: 3, name: 'Apex_Viper', role: 'APEX_COMP', status: 'ACTIVE', twitter: 'https://x.com/viper_apex', discord: 'viper#4421', lateJoin: false, joinDate: '2026-08-15', notes: 'ALGS予選出場 / オーダー担当', eval: {} },
+      { id: 4, name: 'Kite_Next', role: 'FN_ACAD', status: 'TRIAL', twitter: '', discord: 'kite#5501', lateJoin: false, joinDate: '2026-09-01', notes: 'Fortnite育成部門（※報酬なし）', eval: {} }
+    ];
+    saveData();
+  }
+  if (state.finances.length === 0) {
+    state.finances = [{ id: 1, date: new Date().toISOString().split('T')[0], type: 'INCOME', title: '初期運営予算・スポンサー協賛', amount: 80000 }];
+    saveData();
+  }
+  if (state.calendarEvents.length === 0) {
+    const y = new Date().getFullYear(); const m = String(new Date().getMonth() + 1).padStart(2, '0');
+    state.calendarEvents = [{ id: 101, date: `${y}-${m}-25`, type: 'OTHER', time: '20:00', title: '毎月25日 報酬支給＆X報告確認' }];
+    saveData();
+  }
+}
+
+const saveData = () => {
+  try {
+    ['members', 'activities', 'applicants', 'formFields', 'notes', 'apexSquads', 'giveaways', 'customTourney', 'finances', 'calendarEvents', 'academyMissions'].forEach(k => {
+      localStorage.setItem('reign_' + k, JSON.stringify(state[k]));
+    });
+  } catch(e) {}
+};
+
+function renderRoster() {
+  const grid = $('roster-grid'); grid.innerHTML = '';
+  let st = { tot:0, pl:0, zbc:0, ac:0, zba:0, str:0, stf:0 };
+  const filtered = state.members.filter(m => {
+    st.tot++;
+    if(['FN_COMP','APEX_COMP'].includes(m.role)) st.pl++;
+    if(m.role === 'FN_ZB_COMP') st.zbc++;
+    if(['FN_ACAD','APEX_ACAD'].includes(m.role)) st.ac++;
+    if(m.role === 'FN_ZB_ACAD') st.zba++;
+    if(m.role === 'FN_STREAMER' || m.role === 'APEX_STREAMER') st.str++;
+    if(['MANAGEMENT','SPONSOR'].includes(m.role)) st.stf++;
+    const match = state.filterRole === 'ALL' || m.role === state.filterRole;
+    const q = state.searchQuery.toLowerCase();
+    const l = (DEPARTMENTS[m.role]?.label || '').toLowerCase();
+    return match && (m.name.toLowerCase().includes(q) || l.includes(q) || (m.notes && m.notes.toLowerCase().includes(q)));
+  });
+  $('stat-total-members').textContent = st.tot; $('stat-players').textContent = st.pl; $('stat-zb-comp').textContent = st.zbc; $('stat-acad').textContent = st.ac; $('stat-zb-acad').textContent = st.zba; $('stat-streamer').textContent = st.str; $('stat-staff').textContent = st.stf;
+  if (filtered.length === 0) { grid.innerHTML = `<div class="col-span-full p-6 text-center bg-reign-card border border-reign-border rounded text-reign-dim font-mono text-xs">メンバーが見つかりません</div>`; return; }
+  filtered.forEach(m => {
+    const isA = DEPARTMENTS[m.role] && !DEPARTMENTS[m.role].hasSalary;
+    const pt = state.activities.filter(a => a.memberId === m.id).reduce((s, a) => s + (Number(a.points) || 0), 0);
+    const bdg = DEPARTMENTS[m.role] || { label:m.role, badgeClass:'bg-slate-800 text-slate-300' };
+    let xI = m.twitter ? `<a href="${m.twitter.startsWith('http') ? m.twitter : `https://x.com/${m.twitter.replace('@','')}`}" target="_blank" class="text-reign-dim hover:text-white" title="Xを開く" onclick="event.stopPropagation()"><i class="fa-brands fa-x-twitter"></i></a>` : '';
+    const stH = m.status === 'ACTIVE' ? '<span class="text-emerald-400"><i class="fa-solid fa-circle text-[8px]"></i> ACTIVE</span>' : (m.status === 'TRIAL' ? '<span class="text-amber-400"><i class="fa-solid fa-hourglass-half text-[8px]"></i> TRIAL</span>' : '<span class="text-slate-500">INACTIVE</span>');
+    const c = document.createElement('div');
+    c.className = `hud-border bg-reign-card p-3.5 rounded transition relative cursor-pointer hover:border-reign-accent/50 ${isA ? 'opacity-85 border-blue-900/40' : ''} ${m.eval?.penalty>0?'border-red-900/50':''}`;
+    c.onclick = () => window.openMemberDetail(m.id);
+    c.innerHTML = `
+      <div class="flex items-start justify-between">
+        <div><div class="flex flex-wrap items-center gap-1.5"><h3 class="font-black font-mono text-sm sm:text-base text-white">${escapeHtml(m.name)}</h3><span class="px-2 py-0.5 rounded text-[10px] font-mono border font-bold ${bdg.badgeClass}">${bdg.label}</span></div>
+        <div class="flex items-center gap-2 mt-1"><span class="text-[9px] font-mono">${stH}</span>${m.lateJoin ? '<span class="text-[9px] font-mono text-amber-400 bg-amber-950/60 px-1 py-0.2 rounded">19日以降加入</span>' : ''}${m.eval?.grade ? `<span class="text-[9px] font-mono text-orange-400">Grade: ${m.eval.grade}</span>` : ''}</div></div>
+        <div class="flex items-center gap-1" onclick="event.stopPropagation()"><button onclick="window.generateResultTweet('${escapeHtml(m.name)}')" title="大会結果ツイート作成" class="p-1.5 text-reign-accent hover:text-white text-xs"><i class="fa-brands fa-x-twitter"></i></button><button onclick="window.deleteMember(${m.id})" class="p-1.5 text-reign-dim hover:text-reign-red text-xs"><i class="fa-solid fa-trash"></i></button></div>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2 line-clamp-2 min-h-[28px]">${escapeHtml(m.notes || 'メモなし')}</p>
+      <div class="mt-3 pt-2 border-t border-reign-border/60 flex items-center justify-between text-xs font-mono">
+        <div class="flex items-center gap-2">${xI}${m.discord ? `<span class="text-reign-dim text-[10px]"><i class="fa-brands fa-discord"></i> ${escapeHtml(m.discord)}</span>` : ''}</div>
+        <div class="text-right flex gap-2 items-center">${m.eval?.penalty>0?'<span class="text-red-400 text-[9px]"><i class="fa-solid fa-triangle-exclamation"></i> 警告あり</span>':''}<div><span class="text-[10px] text-reign-dim">実績: </span><span class="font-bold text-reign-accent">${pt} pt</span></div></div>
+      </div>
+    `;
+    grid.appendChild(c);
+  });
+  const mOpt = state.members.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
+  if($('act-member')) $('act-member').innerHTML = mOpt;
+  ['sq-p1','sq-p2','sq-p3'].forEach(id => { if($(id)) $(id).innerHTML = `<option value="">--未選択--</option>` + mOpt; });
+}
+
+function renderPayout() {
+  const pb = Number($('total-pool-budget').value) || 0;
+  const tbody = $('payout-table-body'); tbody.innerHTML = '';
+  let ec = 0, totP = 0, gp = 0;
+  const bd = state.members.map(m => {
+    const d = DEPARTMENTS[m.role]; const isE = d && d.hasSalary && !m.lateJoin;
+    const pt = state.activities.filter(a => a.memberId === m.id).reduce((s, a) => s + (Number(a.points) || 0), 0);
+    if (isE) { ec++; totP += pt; }
+    return { m, isE, pt };
+  });
+  bd.forEach(i => {
+    const { m, isE, pt } = i; const e = m.eval || {};
+    let es = 0; if (isE && totP > 0) es = Math.round(pb * (pt / totP));
+    const bE = (Number(e.base) || 0) + es; const sp = Number(e.special) || 0; const pn = Number(e.penalty) || 0;
+    const tot = isE ? (bE + sp - pn) : 0;
+    if (isE) gp += Math.max(0, tot); 
+    const b = DEPARTMENTS[m.role] || {label:m.role, badgeClass:''}; const isA = !b.hasSalary;
+    const tr = document.createElement('tr'); tr.className = isA ? 'opacity-50 bg-[#121318]/50' : 'hover:bg-white/[0.02]';
+    tr.innerHTML = `
+      <td class="py-2.5 px-2 font-bold text-white">${escapeHtml(m.name)}${m.lateJoin?' <span class="text-[9px] text-amber-400">(加入月無)</span>':''}</td>
+      <td class="py-2.5 px-2"><span class="px-1.5 py-0.5 rounded text-[9px] border ${b.badgeClass}">${b.label}</span></td>
+      <td class="py-2.5 px-2 font-bold text-orange-400">${e.grade||'-'}</td>
+      <td class="py-2.5 px-2 font-mono text-[10px]">${isA ? '-' : `<span class="text-emerald-400">+¥${sp}</span> / <span class="text-red-400">-¥${pn}</span>`}</td>
+      <td class="py-2.5 px-2 font-mono text-slate-300">${isA ? '<span class="text-blue-400 text-[10px]">育成枠対象外</span>' : `¥${bE.toLocaleString()} (${pt}pt)`}</td>
+      <td class="py-2.5 px-2 text-right font-black ${isA ? 'text-slate-500' : 'text-emerald-400 text-sm'}">${isA ? '¥0' : `¥${Math.max(0,tot).toLocaleString()}`}</td>
+      <td class="py-2.5 px-2 text-center">${!isA && tot > 0 ? `<button onclick="window.generateRewardTweet('${escapeHtml(m.name)}')" class="px-2 py-1 bg-black border border-reign-accent text-reign-accent hover:bg-reign-accent hover:text-black rounded text-[10px] transition"><i class="fa-brands fa-x-twitter"></i> 報告文</button>` : '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  state.latestCalculatedPayout = gp;
+  $('stat-eligible-count').textContent = `${ec} 人`; $('stat-total-calculated-payout').textContent = `¥${gp.toLocaleString()}`;
+}
+
+function renderActivities() {
+  $('activity-count').textContent = `${state.activities.length} 件`;
+  const l = $('activity-log-list'); l.innerHTML = ''; const sg = $('act-suggestions'); sg.innerHTML = '';
+  const uT = new Set();
+  if (state.activities.length === 0) { l.innerHTML = `<div class="p-4 text-center text-reign-dim font-mono text-xs">ログがありません</div>`; }
+  else {
+    state.activities.forEach(a => {
+      uT.add(a.title); const m = state.members.find(x => x.id === a.memberId); const b = DEPARTMENTS[m?.role] || {label:'', badgeClass:''};
+      const d = document.createElement('div'); d.className = 'bg-[#151722] border border-reign-border p-2.5 rounded flex items-center justify-between gap-2 text-xs font-mono';
+      d.innerHTML = `
+        <div class="space-y-1"><div class="flex items-center gap-2"><span class="font-bold text-white">${escapeHtml(m?.name||'不明')}</span><span class="px-1 py-0.5 rounded text-[9px] border ${b.badgeClass}">${b.label}</span><span class="text-[10px] text-reign-dim">${a.date}</span></div>
+        <div class="text-slate-300"><span class="text-orange-400 font-semibold">[${escapeHtml(a.tourneyType || a.category)}]</span> ${escapeHtml(a.title)}</div></div>
+        <div class="flex items-center gap-2"><div class="text-right"><span class="font-bold text-reign-accent block">+${a.points} pt</span>${a.bonusYen>0?`<span class="text-[10px] text-emerald-400 block">+¥${a.bonusYen.toLocaleString()}</span>`:''}</div>
+        <button onclick="window.deleteActivity(${a.id})" class="p-1 text-reign-dim hover:text-reign-red text-xs"><i class="fa-solid fa-trash"></i></button></div>
+      `;
+      l.appendChild(d);
+    });
+  }
+  Array.from(uT).slice(0, 6).forEach(t => {
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'px-2 py-0.5 bg-[#1a1c26] border border-reign-border text-slate-300 text-[10px] rounded hover:bg-reign-accent/20 hover:text-white transition';
+    btn.textContent = escapeHtml(t); btn.onclick = () => $('act-title').value = t; sg.appendChild(btn);
+  });
+}
+
+function renderApplicants() {
+  const f = state.applicants.filter(a => state.applicantFilter === 'ALL' || a.status === state.applicantFilter);
+  $('recruit-count').textContent = state.applicants.length; const l = $('applicant-list'); l.innerHTML = '';
+  if (f.length === 0) { l.innerHTML = `<div class="hud-border bg-reign-card p-6 text-center text-reign-dim font-mono text-xs rounded">該当する応募はありません</div>`; return; }
+  f.forEach(a => {
+    const d = document.createElement('div'); d.className = 'hud-border bg-reign-card p-3 rounded space-y-2';
+    let cH = ''; state.formFields.forEach(fd => { let v = (a.values && a.values[fd.id]) ? a.values[fd.id] : '-'; if (v) cH += `<div class="text-[11px] font-mono leading-relaxed"><span class="text-orange-400 font-semibold">${escapeHtml(fd.label)}:</span> <span class="text-slate-200">${escapeHtml(v)}</span></div>`; });
+    const b = DEPARTMENTS[a.role] || {label:a.role, badgeClass:'bg-slate-800 text-slate-300'};
+    d.innerHTML = `
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-reign-border/60 pb-2"><div class="flex items-center gap-2 flex-wrap"><span class="font-black font-mono text-sm text-white">${escapeHtml(a.name)}</span><span class="px-2 py-0.5 rounded text-[10px] font-mono border font-bold ${b.badgeClass}">${b.label}</span><span class="text-[10px] font-mono text-reign-dim">${escapeHtml(a.timestamp || '')}</span></div>
+      <div class="flex items-center gap-2"><select onchange="window.updateApplicantStatus(${a.id}, this.value)" class="bg-[#15171e] border border-reign-border rounded px-2 py-1 text-[11px] text-white focus:outline-none"><option value="NEW" ${a.status === 'NEW' ? 'selected' : ''}>新規</option><option value="REVIEW" ${a.status === 'REVIEW' ? 'selected' : ''}>審査中</option><option value="PASS" ${a.status === 'PASS' ? 'selected' : ''}>合格</option><option value="REJECT" ${a.status === 'REJECT' ? 'selected' : ''}>見送り</option></select></div></div>
+      <div class="space-y-1 bg-[#121319] p-2.5 rounded border border-reign-border/60 max-h-[220px] overflow-y-auto">${cH}</div>
+      <div class="flex justify-end gap-2 pt-1">${a.status === 'PASS' ? `<button onclick="window.promoteToRoster(${a.id})" class="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs rounded shadow-[0_0_10px_rgba(16,185,129,0.3)]"><i class="fa-solid fa-user-check"></i> 名簿へ追加</button>` : ''}<button onclick="window.deleteApplicant(${a.id})" class="px-2.5 py-1 text-reign-dim hover:text-reign-red text-xs">削除</button></div>
+    `;
+    l.appendChild(d);
+  });
+}
+
+function renderNotes() {
+  const g = $('notes-grid'); g.innerHTML = '';
+  if(state.notes.length===0){ g.innerHTML = '<div class="col-span-full p-4 text-center text-reign-dim text-xs font-mono border border-reign-border rounded">メモがありません</div>'; return; }
+  state.notes.forEach((n, i) => {
+    const d = document.createElement('div'); d.className = 'bg-[#121319] p-3 rounded border border-reign-border font-mono text-xs flex flex-col justify-between break-words';
+    d.innerHTML = `<div><div class="flex justify-between items-start mb-2"><h4 class="font-bold text-orange-400">${escapeHtml(n.title)}</h4><button onclick="window.deleteNote(${i})" class="text-reign-dim hover:text-red-400"><i class="fa-solid fa-trash text-[10px]"></i></button></div><p class="text-slate-300 whitespace-pre-wrap leading-relaxed">${escapeHtml(n.content)}</p></div><div class="text-[9px] text-reign-dim mt-2 text-right">${n.date||''}</div>`;
+    g.appendChild(d);
+  });
+}
+
+function renderSquads() {
+  const g = $('apex-squad-grid'); g.innerHTML = '';
+  if(state.apexSquads.length===0){ g.innerHTML = '<div class="col-span-full p-4 text-center text-reign-dim text-xs font-mono border border-reign-border rounded">編成データがありません</div>'; return; }
+  state.apexSquads.forEach(sq => {
+    const p1 = state.members.find(m=>m.id==sq.p1); const p2 = state.members.find(m=>m.id==sq.p2); const p3 = state.members.find(m=>m.id==sq.p3);
+    const d = document.createElement('div'); d.className = 'bg-[#151214] p-3 rounded border border-reign-border relative hover:border-reign-accent/50 transition';
+    d.innerHTML = `<div class="flex justify-between items-center border-b border-reign-border pb-2 mb-2"><span class="font-bold text-white font-mono text-sm"><i class="fa-solid fa-shield text-reign-accent"></i> ${escapeHtml(sq.name)}</span><button onclick="window.deleteSquad(${sq.id})" class="text-reign-dim hover:text-red-400"><i class="fa-solid fa-trash text-xs"></i></button></div><div class="space-y-1.5 text-xs font-mono"><div class="flex justify-between bg-black/40 p-1.5 rounded border border-reign-border/50"><span class="text-slate-400">IGL:</span><span class="font-bold text-white">${p1?escapeHtml(p1.name):'<span class="text-reign-dim">未定</span>'}</span></div><div class="flex justify-between bg-black/40 p-1.5 rounded border border-reign-border/50"><span class="text-slate-400">Fragger:</span><span class="font-bold text-white">${p2?escapeHtml(p2.name):'<span class="text-reign-dim">未定</span>'}</span></div><div class="flex justify-between bg-black/40 p-1.5 rounded border border-reign-border/50"><span class="text-slate-400">Support:</span><span class="font-bold text-white">${p3?escapeHtml(p3.name):'<span class="text-reign-dim">未定</span>'}</span></div></div>`;
+    g.appendChild(d);
+  });
+}
+
+function renderAcademy() {
+  const g = $('academy-grid'); g.innerHTML = '';
+  const am = state.members.filter(m => ['FN_ACAD', 'FN_ZB_ACAD', 'APEX_ACAD'].includes(m.role));
+  $('stat-academy-count').textContent = am.length;
+  if (am.length === 0) { g.innerHTML = `<div class="col-span-full hud-border bg-reign-card p-6 text-center text-reign-dim font-mono text-xs rounded">現在、育成部門に所属しているメンバーはいません</div>`; return; }
+  const MD = [{ key: 'm1', label: '① スクリム・チーム練習 出席率80%以上' }, { key: 'm2', label: '② 目標PR / 目標ランク達成' }, { key: 'm3', label: '③ X（Twitter）でのチームタグ発信・活動報告' }, { key: 'm4', label: '④ 遅刻・規約違反ゼロ（素行・礼儀クリア）' }];
+  am.forEach(m => {
+    const p = state.academyMissions[m.id] || { m1: false, m2: false, m3: false, m4: false };
+    const cc = MD.filter(d => p[d.key]).length; const pct = Math.round((cc / MD.length) * 100);
+    const b = DEPARTMENTS[m.role] || { label: m.role, badgeClass: '' };
+    const c = document.createElement('div'); c.className = 'hud-border bg-reign-card p-4 rounded space-y-3 font-mono text-xs';
+    c.innerHTML = `
+      <div class="flex justify-between items-start border-b border-reign-border pb-2.5"><div><div class="flex items-center gap-2"><span class="text-base font-black text-white">${escapeHtml(m.name)}</span><span class="px-2 py-0.5 rounded text-[10px] border font-bold ${b.badgeClass}">${b.label}</span></div><div class="text-[10px] text-reign-dim mt-1">加入日: ${m.joinDate || '-'}</div></div>
+      <div class="text-right"><span class="text-lg font-black ${pct === 100 ? 'text-emerald-400' : 'text-blue-400'}">${pct}%</span><span class="block text-[9px] text-slate-400">達成率 (${cc}/4)</span></div></div>
+      <div class="w-full bg-black h-2 rounded-full overflow-hidden border border-reign-border"><div class="h-full transition-all duration-300 ${pct === 100 ? 'bg-emerald-400' : 'bg-blue-500'}" style="width: ${pct}%"></div></div>
+      <div class="space-y-2 pt-1">${MD.map(d => `<label class="flex items-center gap-2.5 p-2 rounded bg-[#141620] border border-reign-border/60 cursor-pointer hover:border-blue-500/40"><input type="checkbox" ${p[d.key] ? 'checked' : ''} onchange="window.toggleAcademyMission(${m.id}, '${d.key}', this.checked)" class="rounded bg-black border-reign-border text-blue-500"><span class="${p[d.key] ? 'line-through text-slate-500' : 'text-slate-200'} text-[11px]">${d.label}</span></label>`).join('')}</div>
+      <div class="pt-2 flex justify-end"><button onclick="window.promoteAcademyToComp(${m.id})" class="px-3.5 py-2 rounded font-bold text-xs transition flex items-center gap-1.5 ${pct === 100 ? 'bg-emerald-500 hover:bg-emerald-600 text-black shadow-[0_0_12px_rgba(16,185,129,0.4)]' : 'bg-[#1a1c26] border border-reign-border text-slate-300 hover:text-white'}"><i class="fa-solid fa-angles-up"></i> 正規競技部門へ昇格させる</button></div>
+    `;
+    g.appendChild(c);
+  });
+}
+
+function calcCustomPoints(scores, rType) {
+  let tot = 0;
+  (scores || []).forEach(g => {
+    const r = parseInt(g.rank, 10) || 0; const k = parseInt(g.kills, 10) || 0; let pPt = 0;
+    if (r > 0) {
+      if (rType === 'SOLO_CASH') { if(r===1)pPt=60;else if(r===2)pPt=53;else if(r===3)pPt=49;else if(r<=5)pPt=44;else if(r<=10)pPt=35;else if(r<=25)pPt=20;else if(r<=50)pPt=5; tot += pPt+(k*2); }
+      else if (rType === 'FNCS') { if(r===1)pPt=65;else if(r===2)pPt=56;else if(r===3)pPt=52;else if(r<=5)pPt=46;else if(r<=10)pPt=36;else if(r<=15)pPt=26;else if(r<=25)pPt=10; tot += pPt+(k*4); }
+      else { if(r===1)pPt=20;else if(r===2)pPt=15;else if(r===3)pPt=12;else if(r<=5)pPt=8;else if(r<=10)pPt=4; tot += pPt+k; }
+    } else { const m = rType === 'FNCS' ? 4 : (rType === 'SOLO_CASH' ? 2 : 1); tot += k*m; }
+  }); return tot;
+}
+
+function renderCustomTourney() {
+  const ct = state.customTourney;
+  $('custom-title').value = ct.title || ''; $('custom-key').value = ct.key || ''; $('custom-rule').value = ct.rule || 'SOLO_CASH'; $('custom-prize').value = ct.prize || '';
+  const tb = $('custom-leaderboard-body'); tb.innerHTML = '';
+  if (!ct.participants || ct.participants.length === 0) { tb.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-reign-dim">参加者が登録されていません。上のフォームから追加してください。</td></tr>`; return; }
+  const srt = ct.participants.map(p => ({ ...p, totalPt: calcCustomPoints(p.scores, ct.rule) })).sort((a, b) => b.totalPt - a.totalPt);
+  srt.forEach((p, i) => {
+    const rDisp = i === 0 ? '🥇 1位' : (i === 1 ? '🥈 2位' : (i === 2 ? '🥉 3位' : `${i + 1}位`));
+    const tr = document.createElement('tr'); tr.className = i < 3 ? 'bg-orange-500/[0.04]' : 'hover:bg-white/[0.02]';
+    tr.innerHTML = `
+      <td class="py-2 px-2 font-black ${i === 0 ? 'text-amber-400' : 'text-slate-300'}">${rDisp}</td>
+      <td class="py-2 px-2"><div class="font-bold text-white">${escapeHtml(p.name)}</div><div class="text-[10px] text-reign-dim">${escapeHtml(p.social || '-')}</div></td>
+      ${[0, 1, 2].map(gi => {
+        const g = p.scores?.[gi] || { rank: '', kills: '' };
+        return `<td class="py-2 px-1 text-center"><div class="inline-flex items-center gap-1 bg-black border border-reign-border rounded px-1 py-0.5"><input type="number" min="1" max="100" placeholder="順" value="${g.rank}" onchange="window.updateCustomScore(${p.id}, ${gi}, 'rank', this.value)" class="w-9 bg-transparent text-center text-white focus:outline-none"><span class="text-slate-600">/</span><input type="number" min="0" max="99" placeholder="K" value="${g.kills}" onchange="window.updateCustomScore(${p.id}, ${gi}, 'kills', this.value)" class="w-8 bg-transparent text-center text-orange-400 focus:outline-none"></div></td>`;
+      }).join('')}
+      <td class="py-2 px-2 text-right font-black text-reign-accent text-sm">${p.totalPt} pt</td>
+      <td class="py-2 px-2 text-center"><input type="checkbox" ${p.paid ? 'checked' : ''} onchange="window.toggleCustomPaid(${p.id}, this.checked)" class="rounded bg-black border-reign-border text-emerald-500"></td>
+      <td class="py-2 px-2 text-center"><button onclick="window.deleteCustomParticipant(${p.id})" class="text-reign-dim hover:text-red-400"><i class="fa-solid fa-trash"></i></button></td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+
+function getValidGiveawayEntries() {
+  const r = $('gw-entries').value || ''; const ls = r.split(/\r\n|\r|\n/).map(s => s.trim()).filter(s => s.length > 0); return Array.from(new Set(ls));
+}
+
+function renderGiveaway() {
+  $('gw-title').value = state.giveaways.title || ''; $('gw-entries').value = state.giveaways.entries || '';
+  $('gw-valid-count').textContent = `有効: ${getValidGiveawayEntries().length} 名`;
+  const l = $('gw-winners-list'); l.innerHTML = '';
+  if (!state.giveaways.winners || state.giveaways.winners.length === 0) { l.innerHTML = `<div class="p-4 text-center text-reign-dim border border-reign-border rounded">まだ当選者はいません。ルーレットを回してください！</div>`; return; }
+  state.giveaways.winners.forEach((w, i) => {
+    const d = document.createElement('div'); d.className = 'bg-[#121319] border border-reign-border p-3 rounded flex flex-col sm:flex-row justify-between sm:items-center gap-2';
+    d.innerHTML = `
+      <div><div class="flex items-center gap-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${w.isSub ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-reign-accent text-black'}">${w.isSub ? '補欠当選' : '🎉 本当選'}</span><span class="font-black text-sm text-white">${escapeHtml(w.name)}</span></div>
+      <div class="flex flex-wrap gap-3 mt-2 text-[11px] text-slate-300"><label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" ${w.followed?'checked':''} onchange="window.toggleGwCheck(${i},'followed',this.checked)"> 公式フォロー</label><label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" ${w.rted?'checked':''} onchange="window.toggleGwCheck(${i},'rted',this.checked)"> RT完了</label><label class="flex items-center gap-1 cursor-pointer text-emerald-400"><input type="checkbox" ${w.sent?'checked':''} onchange="window.toggleGwCheck(${i},'sent',this.checked)"> ギフト送付済</label></div></div>
+      <div class="flex gap-1.5"><button onclick="window.copyGwDm('${escapeHtml(w.name)}')" class="px-2.5 py-1.5 bg-[#1a1c26] border border-reign-accent/50 text-reign-accent hover:bg-reign-accent hover:text-black rounded text-[11px] font-bold transition"><i class="fa-solid fa-envelope"></i> 当選DMコピー</button></div>
+    `;
+    l.appendChild(d);
+  });
+}
+
+const CAL_CAT = { PRIZE:{label:'賞金付きカスタム',dot:'bg-amber-400',text:'text-amber-400'}, OFFICIAL:{label:'公式大会',dot:'bg-red-500',text:'text-red-400'}, SCRIM:{label:'スクリム・練習',dot:'bg-blue-400',text:'text-blue-400'}, INTERVIEW:{label:'面接',dot:'bg-purple-400',text:'text-purple-400'}, OTHER:{label:'運営・25日支給日',dot:'bg-emerald-400',text:'text-emerald-400'}, MISC:{label:'その他',dot:'bg-slate-400',text:'text-slate-300'} };
+
+function fmtPeriod(e) {
+  const sD = e.startDate || e.date || ''; const eD = e.endDate || sD; const sT = e.startTime || e.time || ''; const eT = e.endTime || '';
+  const fMD = d => d ? `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '';
+  if (sD === eD) { if (sT && eT) return `${sT} 〜 ${eT}`; if (sT) return `${sT} 〜`; if (eT) return `〜 ${eT}`; return '終日'; } 
+  else { return `${fMD(sD)}${sT ? ' ' + sT : ''} 〜 ${fMD(eD)}${eT ? ' ' + eT : ''}`; }
+}
+
+function isOnDt(e, dStr) { const s = e.startDate || e.date; const end = e.endDate || s; if (!s) return false; return dStr >= s && dStr <= end; }
+
+function renderCalendar() {
+  const y = state.calYear; const m = state.calMonth;
+  $('cal-month-label').textContent = `${y}年 ${m + 1}月`;
+  const g = $('calendar-days-grid'); g.innerHTML = '';
+  const fD = new Date(y, m, 1).getDay(); const dIM = new Date(y, m + 1, 0).getDate();
+  for (let i = 0; i < fD; i++) { g.innerHTML += `<div class="h-16 sm:h-20 bg-black/30 rounded border border-reign-border/30"></div>`; }
+  for (let d = 1; d <= dIM; d++) {
+    const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dEvs = state.calendarEvents.filter(e => isOnDt(e, ds)); const isS = state.calSelectedDate === ds;
+    const c = document.createElement('div');
+    c.className = `h-16 sm:h-20 p-1.5 rounded border cursor-pointer transition flex flex-col justify-between overflow-hidden ${isS ? 'bg-orange-500/15 border-reign-accent' : 'bg-[#121319] border-reign-border hover:border-slate-600'}`;
+    c.onclick = () => { state.calSelectedDate = ds; renderCalendar(); };
+    c.innerHTML = `
+      <div class="flex justify-between items-center"><span class="text-xs font-bold ${isS ? 'text-reign-accent' : 'text-slate-300'}">${d}</span><div class="flex gap-0.5">${dEvs.slice(0, 4).map(e => { const c=CAL_CAT[e.type]||CAL_CAT.MISC; return `<span class="w-1.5 h-1.5 rounded-full ${c.dot}"></span>`; }).join('')}</div></div>
+      <div class="space-y-0.5 overflow-hidden">${dEvs.slice(0, 2).map(e => { const s=e.startDate||e.date; const end=e.endDate||s; const isM=s!==end; const px=isM?(ds===s?'▶':(ds===end?'◀':'―')):''; return `<div class="text-[9px] truncate px-1 rounded bg-black/60 text-slate-200">${px}${escapeHtml(e.title)}</div>`; }).join('')}</div>
+    `;
+    g.appendChild(c);
+  }
+  $('cal-selected-date-label').textContent = state.calSelectedDate; $('cal-event-start-date').value = state.calSelectedDate; $('cal-event-end-date').value = state.calSelectedDate;
+  const dl = $('cal-day-events-list'); dl.innerHTML = '';
+  const sEvs = state.calendarEvents.filter(e => isOnDt(e, state.calSelectedDate));
+  if (sEvs.length === 0) { dl.innerHTML = `<div class="text-slate-500 text-[11px] p-2">予定はありません</div>`; } 
+  else { sEvs.forEach(e => { const c=CAL_CAT[e.type]||CAL_CAT.MISC; const ps=fmtPeriod(e); dl.innerHTML += `<div class="bg-[#121319] border border-reign-border p-2 rounded flex justify-between items-center gap-2"><div class="min-w-0"><div class="flex items-center gap-1.5 flex-wrap"><span class="text-[10px] font-bold ${c.text}">[${c.label}]</span><span class="text-[10px] text-slate-300">${escapeHtml(ps)}</span></div><div class="text-white font-bold truncate mt-0.5">${escapeHtml(e.title)}</div></div><button onclick="window.deleteCalendarEvent(${e.id})" class="text-reign-dim hover:text-red-400 p-1 shrink-0"><i class="fa-solid fa-trash"></i></button></div>`; }); }
+}
+
+function renderFinance() {
+  let inc = 0; let exp = 0; state.finances.forEach(f => { if(f.type==='INCOME') inc+=Number(f.amount)||0; else exp+=Number(f.amount)||0; });
+  const bal = inc - exp; const pR = state.latestCalculatedPayout || 0; const aP = bal - pR;
+  $('fin-balance').textContent = `¥${bal.toLocaleString()}`; $('fin-total-income').textContent = `+¥${inc.toLocaleString()}`; $('fin-total-expense').textContent = `-¥${exp.toLocaleString()}`; $('fin-after-payout').textContent = `¥${aP.toLocaleString()}`; $('fin-after-payout').className = `text-xl sm:text-2xl font-black mt-1 ${aP >= 0 ? 'text-reign-accent' : 'text-red-500'}`; $('fin-payout-ref').textContent = `※25日支給予定: ¥${pR.toLocaleString()} を差引済`;
+  $('fin-count').textContent = `${state.finances.length} 件`; const l = $('finance-list'); l.innerHTML = '';
+  if (state.finances.length === 0) { l.innerHTML = `<div class="p-4 text-center text-reign-dim">履歴がありません</div>`; return; }
+  state.finances.forEach(f => {
+    const isI = f.type === 'INCOME'; const d = document.createElement('div'); d.className = 'bg-[#14161f] border border-reign-border p-2.5 rounded flex justify-between items-center';
+    d.innerHTML = `<div><div class="flex items-center gap-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${isI?'bg-emerald-500/20 text-emerald-400':'bg-red-500/20 text-red-400'}">${isI?'収入':'支出'}</span><span class="text-white font-bold">${escapeHtml(f.title)}</span></div><div class="text-[10px] text-reign-dim mt-0.5">${f.date}</div></div><div class="flex items-center gap-3"><span class="font-black text-sm ${isI?'text-emerald-400':'text-red-400'}">${isI?'+':'-'}¥${Number(f.amount).toLocaleString()}</span><button onclick="window.deleteFinance(${f.id})" class="text-reign-dim hover:text-red-400"><i class="fa-solid fa-trash"></i></button></div>`;
+    l.appendChild(d);
+  });
+}
+
+const FKB = {
+  f_name: ['活動名', 'プレイヤー名', 'ハンドルネーム', '名前', '氏名', 'mcid', 'ign'], f_age: ['年齢', '歳', '学年'], f_device: ['使用機種', '機種', 'デバイス', '端末', 'プラットフォーム', 'pc', 'ps5', 'ps4', 'switch'], f_x: ['xアカウント', 'twitter', 'xのリンク', 'xリンク', 'x url', 'sns'], f_tracker: ['tracker', 'トラッカー', 'fortnitetracker'], f_discord: ['discord', 'ディスコード', 'ディスコ'], f_best: ['最高成績', '競技シーン', '最高ランク', '実績', '戦績', 'pr'], f_reason: ['応募した理由', '応募理由', '志望理由', '志望動機', 'チームに応募'], f_pr: ['アピールポイント', 'アピール', '自己pr', '自己アピール'], f_ideal: ['理想の選手像', '選手像', '思い描く理想'], f_time: ['平均プレイ時間', 'プレイ時間', '平日と休日', '稼働時間'], f_routine: ['ルーティーン', 'ルーティン', '起動してから'], f_other1: ['同時応募', '現在、他のチーム', '現在他のチーム'], f_other2: ['これから先', '応募する可能性', '今後の応募'], f_procon: ['長所と短所', '長所', '短所'], f_skill: ['伸ばしたい能力', '一番伸ばしたい', '伸ばすために'], f_ban: ['規約違反', '犯罪行為', 'ban歴', 'チート'], f_agree: ['規約に同意', '同意しますか']
+};
+const nHStr = s => String(s||'').replace(/[\r\n\t\s　]+/g, '').replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0)).toLowerCase();
+function dRFTxt(t) {
+  if(!t) return 'FN_COMP'; const l=t.toLowerCase();
+  if(l.includes('ゼロビルド')&&(l.includes('育成')||l.includes('アカデミー'))) return 'FN_ZB_ACAD';
+  if(l.includes('ゼロビルド')||l.includes('zb')) return 'FN_ZB_COMP';
+  if((l.includes('fortnite')||l.includes('フォトナ')||l.includes('fn'))&&(l.includes('育成')||l.includes('アカデミー'))) return 'FN_ACAD';
+  if(l.includes('apex')&&(l.includes('育成')||l.includes('アカデミー'))) return 'APEX_ACAD';
+  if(l.includes('apex')&&(l.includes('ストリーマー')||l.includes('配信'))) return 'APEX_STREAMER';
+  if(l.includes('apex')) return 'APEX_COMP';
+  if(l.includes('ストリーマー')||l.includes('配信')||l.includes('動画')) return 'FN_STREAMER';
+  if(l.includes('運営')||l.includes('マネージャー')||l.includes('裏方')||l.includes('デザイナー')) return 'MANAGEMENT';
+  if(l.includes('スポンサー')||l.includes('支援')) return 'SPONSOR';
+  if(l.includes('育成')) return 'FN_ACAD'; return 'FN_COMP';
+}
+function pSSG(raw) {
+  const t = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim(); if(!t) return [];
+  let iQ=false, tc=0, cc=0;
+  for(let i=0; i<t.length; i++){ const c=t[i]; if(c==='"'){ if(iQ&&t[i+1]==='"'){ i++;continue; } iQ=!iQ; }else if(!iQ){ if(c==='\n')break; if(c==='\t')tc++; else if(c===',')cc++; } }
+  const d = tc>=cc&&tc>0 ? '\t' : (cc>0 ? ',' : '\t');
+  const rs=[]; let r=[]; let c=''; let inQ=false;
+  for(let i=0; i<t.length; i++){
+    const ch=t[i]; const n=t[i+1];
+    if(ch==='"'){ if(inQ&&n==='"'){ c+='"';i++; }else{ inQ=!inQ; } }
+    else if(ch===d&&!inQ){ r.push(c.trim()); c=''; }
+    else if(ch==='\n'&&!inQ){ r.push(c.trim()); if(r.some(x=>x!=='')) rs.push(r); r=[]; c=''; }
+    else{ c+=ch; }
+  }
+  r.push(c.trim()); if(r.some(x=>x!=='')) rs.push(r); return rs;
+}
+function iCbC(sR, cI) {
+  const smps = sR.map(r=>(r[cI]||'').trim()).filter(Boolean); if(smps.length===0) return null;
+  const j = smps.join(' ').toLowerCase();
+  if(smps.every(s=>/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(s))) return 'timestamp';
+  if(j.includes('fortnitetracker.com')) return 'f_tracker';
+  if(j.includes('x.com/')||j.includes('twitter.com/')) return 'f_x';
+  if(smps.every(s=>/^\d{1,2}歳?$/.test(s)&&parseInt(s,10)>=10&&parseInt(s,10)<=60)) return 'f_age';
+  if(/部門|fortnite|apex|育成|競技|ゼロビルド|ストリーマー/i.test(j)&&smps.every(s=>s.length<=35)) return 'role';
+  if(/^(pc|ps4|ps5|switch|スイッチ|モバイル|ipad|iphone|xbox|pad|キーマウ)/i.test(smps[0])&&smps.every(s=>s.length<=30)) return 'f_device';
+  if(smps.every(s=>/^[a-z0-9._]{2,32}(#\d{4})?$/i.test(s))&&cI>0) return 'f_discord';
+  if(/同意します|規約に同意/i.test(j)) return 'f_agree'; return null;
+}
+function pRDS(r) {
+  if(!r||!r.trim()) { showToast('データが空です', true); return; }
+  const rs = pSSG(r); if(rs.length===0) { showToast('行が見つかりません', true); return; }
+  state.parsedPasteRows = rs;
+  const hs = rs[0].reduce((a, c) => /タイムスタンプ|活動名|年齢|希望部門|使用機種|アカウント|tracker|discord|最高成績|応募した理由|アピール|理想|プレイ時間|ルーティ|同時応募|長所|伸ばしたい|規約/.test(nHStr(c)) ? a+1 : a, 0);
+  const hh = hs >= 2; state.parsedHasHeader = hh;
+  const mxC = Math.max(...rs.map(x=>x.length)); const dSmp = hh ? rs.slice(1) : rs;
+  const cLs = [];
+  for (let i=0; i<mxC; i++) { let l=`列 ${i+1}`; const p=hh?(rs[0][i]||''):(rs[0][i]||''); const clP=p.replace(/[\r\n]+/g,' ').trim(); if(clP){ l+=` [${clP.substring(0,18)}${clP.length>18?'…':''}]`; } cLs.push({index:i, label:l}); }
+  const c = $('dynamic-mapping-selectors'); c.innerHTML = '';
+  const cFds = [ { id:'map-core-name', fieldKey:'f_name', label:'★活動名 / プレイヤー名', keywords:FKB.f_name, isRequired:true }, { id:'map-core-role', fieldKey:'role', label:'★希望部門', keywords:['希望部門', '部門', '応募部門'], isRequired:true } ];
+  const aMF = [ ...cFds, ...state.formFields.map(f => ({ id:`map-field-${f.id}`, fieldKey:f.id, label:f.label, keywords:[...(FKB[f.id]||[]), ...(f.keywords||[]), f.label], isRequired:false })) ];
+  const cIM = {}; for (let i=0; i<mxC; i++) { const g=iCbC(dSmp, i); if(g&&cIM[g]===undefined) cIM[g]=i; }
+  aMF.forEach(f => {
+    const w = document.createElement('div'); w.className = 'space-y-1';
+    w.innerHTML = `<label class="block font-bold truncate ${f.isRequired?'text-reign-accent':'text-slate-300'}" title="${escapeHtml(f.label)}">${escapeHtml(f.label)}</label><select id="${f.id}" class="w-full bg-[#0f1015] border border-reign-border rounded p-1 text-white focus:outline-none"><option value="-1">-- 割当なし --</option>${cLs.map(x=>`<option value="${x.index}">${escapeHtml(x.label)}</option>`).join('')}</select>`;
+    c.appendChild(w); const el = w.querySelector('select'); let m = -1;
+    if (hh) { let bL=0; for (let i=0; i<rs[0].length; i++) { const nH=nHStr(rs[0][i]); if(!nH)continue; for (const k of f.keywords) { const nK=nHStr(k); if(nK&&nH.includes(nK)&&nK.length>bL){ m=i;bL=nK.length; } } } }
+    if (m===-1 && cIM[f.fieldKey]!==undefined) m = cIM[f.fieldKey];
+    if (m>=0 && m<mxC) el.value = String(m);
+  });
+  const pI = hh&&rs.length>1?1:0; const sR = rs[pI]||[]; $('mapping-sample-preview').textContent = `1件目プレビュー: ` + sR.map((x,i)=>`[列${i+1}] ${x.replace(/\n/g,' ')}`).join('  |  ');
+  const cnt = hh?Math.max(0,rs.length-1):rs.length; $('detected-rows-count').textContent = `検知: ${cnt} 件${hh?' (質問ヘッダー自動認識)':' (データ行のみ認識)'}`;
+  $('mapping-panel').classList.remove('hidden'); $('mapping-panel').scrollIntoView({ behavior:'smooth' }); showToast(`${cnt}件のデータを解析しました！`);
+}
+function pPI() { pRDS($('tsv-paste-input').value); }
+function eMI() {
+  const rs = state.parsedPasteRows; if (!rs||rs.length===0) return;
+  const nC = parseInt($('map-core-name').value, 10); const rC = parseInt($('map-core-role').value, 10);
+  const hh = !!state.parsedHasHeader; const dR = hh ? rs.slice(1) : rs;
+  let tC = -1; if (hh) tC = rs[0].findIndex(h => /タイムスタンプ|timestamp|日時/i.test(nHStr(h)));
+  if (tC===-1 && dR[0] && /^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}/.test(dR[0][0]||'')) tC = 0;
+  let im = 0;
+  dR.forEach((c, idx) => {
+    if (!c||c.length===0||c.every(x=>!x.trim())) return;
+    const rN = (nC>=0&&c[nC]!==undefined) ? c[nC].trim() : ''; const nm = rN || `応募者_${Date.now().toString().slice(-4)}_${idx + 1}`;
+    const rl = dRFTxt((rC>=0&&c[rC]!==undefined) ? c[rC].trim() : '');
+    const ts = (tC>=0&&c[tC]&&c[tC].trim()) ? c[tC].trim() : new Date().toLocaleDateString('ja-JP');
+    const fV = {};
+    state.formFields.forEach(f => {
+      const s = $(`map-field-${f.id}`);
+      if (s) { const cI=parseInt(s.value, 10); const cV=(cI>=0&&c[cI]!==undefined)?c[cI].trim():''; fV[f.id] = cV!==''?cV:'-'; } else fV[f.id] = '-';
+    });
+    state.applicants.unshift({ id: Date.now()+idx, timestamp: ts, name: nm, role: rl, values: fV, status: 'NEW' }); im++;
+  });
+  saveData(); renderApplicants(); showToast(`${im} 件のデータを取り込みました！`);
+  $('mapping-panel').classList.add('hidden'); $('tsv-paste-input').value = ''; state.parsedPasteRows = [];
+}
+function pST(m) {
+  const e = m.eval || {}; $('slip-name').textContent = m.name; $('slip-role').textContent = DEPARTMENTS[m.role]?.label || m.role; $('slip-grade').textContent = e.grade || '-'; $('slip-date').textContent = new Date().toISOString().slice(0,10).replace(/-/g,'/'); $('slip-base').textContent = `¥${(e.base||0).toLocaleString()}`; $('slip-special').textContent = `¥${(e.special||0).toLocaleString()}`; $('slip-penalty').textContent = `¥${(e.penalty||0).toLocaleString()}`; $('slip-final').textContent = `¥${((e.base||0)+(e.special||0)-(e.penalty||0)).toLocaleString()}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initData();
+  $$('.nav-tab').forEach(b => { b.addEventListener('click', () => {
+    $$('.nav-tab').forEach(x => { x.classList.remove('border-reign-accent', 'text-white'); x.classList.add('border-transparent', 'text-reign-dim'); });
+    b.classList.add('border-reign-accent', 'text-white'); b.classList.remove('border-transparent', 'text-reign-dim');
+    $$('.tab-content').forEach(c => c.classList.add('hidden')); const t = $(b.dataset.target); if (t) t.classList.remove('hidden');
+    if (b.dataset.target === 'tab-payout') renderPayout();
+    if (b.dataset.target === 'tab-finance') { renderPayout(); renderFinance(); }
+    if (b.dataset.target === 'tab-academy') renderAcademy();
+    if (b.dataset.target === 'tab-calendar') renderCalendar();
+  });});
+  $('btn-download-html').addEventListener('click', () => { const b = new Blob(['<!DOCTYPE html>\n'+document.documentElement.outerHTML], { type:'text/html;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'index.html'; a.click(); showToast('保存しました'); });
+  $('btn-export').addEventListener('click', () => { const b = { members:state.members, activities:state.activities, applicants:state.applicants, formFields:state.formFields, notes:state.notes, apexSquads:state.apexSquads, giveaways:state.giveaways, customTourney:state.customTourney, finances:state.finances, calendarEvents:state.calendarEvents, academyMissions:state.academyMissions }; const bl = new Blob([JSON.stringify(b, null, 2)], { type:'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(bl); a.download = `REIGN_OS_${new Date().toISOString().slice(0, 10)}.json`; a.click(); });
+  $('import-file').addEventListener('change', e => {
+    const f = e.target.files[0]; if(!f) return; const r = new FileReader();
+    r.onload = evt => { try { const d = JSON.parse(evt.target.result); if(d.members) { ['members','activities','applicants','formFields','notes','apexSquads','giveaways','customTourney','finances','calendarEvents','academyMissions'].forEach(k=>{if(d[k])state[k]=d[k];}); saveData(); location.reload(); } } catch(err){ showToast('復元エラー', true); } }; r.readAsText(f);
+  });
+  $('btn-copy-payout-summary').addEventListener('click', () => { copyTextSafe(`【REIGN Esports 25日報酬支給サマリー】\n支給対象者: ${$('stat-eligible-count').textContent}\n確定総支給額: ${$('stat-total-calculated-payout').textContent}\n※受取後は #REIGN報酬 #REWIN を付けてチームメンション報告をお願いします！`); showToast('サマリーをコピーしました'); });
+  $('roster-search').addEventListener('input', e => { state.searchQuery = e.target.value; renderRoster(); });
+  $('roster-filter-role').addEventListener('change', e => { state.filterRole = e.target.value; renderRoster(); });
+  const aDt = $('act-date'); if (aDt) aDt.value = new Date().toISOString().split('T')[0];
+  const aCat = $('act-category');
+  aCat.addEventListener('change', () => { const v = aCat.value; $('wrapper-tourney-type').classList.toggle('hidden', v!=='TOURNEY'); $('wrapper-fncs-bonus').classList.toggle('hidden', v!=='FNCS_DIV'); $('wrapper-prize-usd').classList.toggle('hidden', v!=='PRIZE_BONUS'); });
+  $('act-prize-usd').addEventListener('input', e => { $('act-prize-calc-hint').textContent = `支給額: +¥${(Math.floor((parseFloat(e.target.value)||0)/100)*500).toLocaleString()} (99$以下切り捨て)`; });
+  $('activity-form').addEventListener('submit', e => {
+    e.preventDefault(); const c = $('act-category').value; let b = 0;
+    if(c==='FNCS_DIV') b = FNCS_RATES[$('act-fncs-stage').value] || 0; else if(c==='PRIZE_BONUS') b = Math.floor((parseFloat($('act-prize-usd').value)||0)/100)*500;
+    state.activities.unshift({ id: Date.now(), memberId: parseInt($('act-member').value, 10), category: c, tourneyType: $('act-tourney-type').value, title: $('act-title').value.trim(), points: parseInt($('act-points').value, 10)||0, bonusYen: b, date: $('act-date').value });
+    saveData(); renderActivities(); renderPayout(); renderRoster(); showToast('記録しました'); $('act-title').value = '';
+  });
+  let aDMId = null;
+  window.openMemberDetail = id => {
+    const m = state.members.find(x => x.id === id); if(!m) return; aDMId = id;
+    $('md-name').textContent = m.name; $('md-role').innerHTML = `<span class="px-1.5 py-0.5 rounded text-[9px] border font-bold ${DEPARTMENTS[m.role]?.badgeClass||''}">${DEPARTMENTS[m.role]?.label||m.role}</span>`; $('md-status').innerHTML = m.status==='ACTIVE'?'<span class="text-emerald-400"><i class="fa-solid fa-circle text-[8px]"></i> ACTIVE</span>':'<span class="text-amber-400">TRIAL</span>';
+    const xl = $('md-x-link'); if(m.twitter) { xl.href = m.twitter.startsWith('http')?m.twitter:`https://x.com/${m.twitter.replace('@','')}`; xl.classList.remove('hidden'); } else { xl.classList.add('hidden'); }
+    $('md-discord').textContent = m.discord || '-'; $('md-join').textContent = m.joinDate || '-'; $('md-notes').textContent = m.notes || '-';
+    const eD = m.eval || {}; ['tourney','sns','contrib','grade','promo','base','special','reason','penalty'].forEach(k => { const el = $(`e-${k}`); if(el) el.value = eD[k] || (['base','special','penalty'].includes(k)?'0':(k==='grade'?'B':(k==='promo'?'':'3'))); });
+    const hL = $('md-history-list'); hL.innerHTML = ''; const ac = state.activities.filter(a => a.memberId === id);
+    if(ac.length===0) hL.innerHTML = '<div class="text-slate-500 text-xs">履歴がありません</div>';
+    ac.forEach(a => { hL.innerHTML += `<div class="bg-[#0a0a0c] p-2.5 border border-reign-border rounded text-[10px] font-mono flex justify-between items-center"><div class="text-slate-300"><span class="text-reign-dim">${a.date}</span><br/>${escapeHtml(a.title)}</div><div class="text-orange-400 font-bold text-sm">+${a.pt||a.points}pt</div></div>`; });
+    $('member-detail-modal').classList.remove('hidden');
+  };
+  $('btn-close-md').addEventListener('click', () => { $('member-detail-modal').classList.add('hidden'); aDMId = null; });
+  $('eval-form').addEventListener('submit', e => { e.preventDefault(); const m = state.members.find(x => x.id === aDMId); if(m) { m.eval = { tourney:$('e-tourney').value, sns:$('e-sns').value, contrib:$('e-contrib').value, grade:$('e-grade').value, promo:$('e-promo').value, base:Number($('e-base').value), special:Number($('e-special').value), reason:$('e-reason').value, penalty:Number($('e-penalty').value) }; saveData(); renderRoster(); renderPayout(); showToast('保存しました'); } });
+  const mM = $('member-modal'); const mF = $('member-form');
+  $('btn-open-member-modal').addEventListener('click', () => { mF.reset(); $('m-id').value=''; $('m-joindate').value=new Date().toISOString().split('T')[0]; $('modal-title').textContent='新規メンバー登録'; mM.classList.remove('hidden'); });
+  const cMM = () => mM.classList.add('hidden'); $('btn-close-member-modal').addEventListener('click', cMM); $('btn-cancel-member-modal').addEventListener('click', cMM);
+  mF.addEventListener('submit', e => {
+    e.preventDefault(); const id = $('m-id').value; const jD = $('m-joindate').value; let iL = $('m-late-join').checked;
+    if(jD) { const d = parseInt(jD.split('-')[2], 10); if(d>=19&&d<=31) iL=true; }
+    const d = { name: $('m-name').value.trim(), role: $('m-role').value, status: $('m-status').value, twitter: $('m-twitter').value.trim(), discord: $('m-discord').value.trim(), joinDate: jD, lateJoin: iL, notes: $('m-notes').value.trim() };
+    if(id) { state.members = state.members.map(m => m.id == id ? { ...m, ...d } : m); showToast('更新しました'); } else { d.id = Date.now(); d.eval={}; state.members.push(d); showToast('追加しました！'); }
+    saveData(); renderRoster(); renderPayout(); renderAcademy(); cMM();
+  });
+  $('note-form').addEventListener('submit', e => { e.preventDefault(); state.notes.unshift({ title:$('n-title').value, content:$('n-content').value, date:new Date().toLocaleString('ja-JP') }); saveData(); renderNotes(); $('note-form').reset(); showToast('保存しました'); });
+  $('btn-open-squad-modal').addEventListener('click', () => { $('squad-form').reset(); $('sq-id').value=''; $('squad-modal').classList.remove('hidden'); });
+  $('btn-close-squad').addEventListener('click', () => $('squad-modal').classList.add('hidden'));
+  $('squad-form').addEventListener('submit', e => { e.preventDefault(); state.apexSquads.push({ id:Date.now(), name:$('sq-name').value, p1:$('sq-p1').value, p2:$('sq-p2').value, p3:$('sq-p3').value }); saveData(); renderSquads(); $('squad-modal').classList.add('hidden'); showToast('編成しました'); });
+  window.toggleAcademyMission = (id, k, c) => { if (!state.academyMissions[id]) state.academyMissions[id] = {}; state.academyMissions[id][k] = c; saveData(); renderAcademy(); };
+  window.promoteAcademyToComp = id => { const m = state.members.find(x => x.id === id); if(!m) return; const p = { FN_ACAD:'FN_COMP', FN_ZB_ACAD:'FN_ZB_COMP', APEX_ACAD:'APEX_COMP' }; m.role = p[m.role] || 'FN_COMP'; m.status = 'ACTIVE'; saveData(); renderAcademy(); renderRoster(); renderPayout(); showToast(`🎉 ${m.name} が昇格しました`); };
+  ['custom-title', 'custom-key', 'custom-rule', 'custom-prize'].forEach(id => { $(id).addEventListener('change', () => { state.customTourney.title = $('custom-title').value; state.customTourney.key = $('custom-key').value; state.customTourney.rule = $('custom-rule').value; state.customTourney.prize = $('custom-prize').value; saveData(); renderCustomTourney(); }); });
+  $('btn-toggle-custom-key').addEventListener('click', () => { const i = $('custom-key'); i.type = i.type === 'password' ? 'text' : 'password'; });
+  $('btn-copy-custom-key').addEventListener('click', () => { copyTextSafe($('custom-key').value); showToast('コピーしました'); });
+  $('btn-copy-custom-discord').addEventListener('click', () => { const ct = state.customTourney; copyTextSafe(`【🏆 ${ct.title} 進行アナウンス】\n🔑 カスタムキー: \`${ct.key}\`\n🎁 賞金・景品: ${ct.prize}\n\n⚠️ ルール注意事項:\n・死体撃ち / 煽り行為禁止\n・カスタムキーの外部漏洩禁止\n準備ができ次第レディをお願いします！🔥`); showToast('コピーしました'); });
+  $('custom-participant-form').addEventListener('submit', e => { e.preventDefault(); state.customTourney.participants.push({ id:Date.now(), name:$('cp-name').value.trim(), social:$('cp-social').value.trim(), scores:[{rank:'',kills:''},{rank:'',kills:''},{rank:'',kills:''}], paid:false }); saveData(); renderCustomTourney(); $('custom-participant-form').reset(); });
+  $('btn-reset-custom').addEventListener('click', () => { if(confirm('リセットしますか？')){ state.customTourney.participants=[]; saveData(); renderCustomTourney(); } });
+  window.updateCustomScore = (id, gI, f, v) => { const p = state.customTourney.participants.find(x => x.id === id); if(p){ if(!p.scores[gI]) p.scores[gI]={rank:'',kills:''}; p.scores[gI][f]=v; saveData(); renderCustomTourney(); } };
+  window.toggleCustomPaid = (id, c) => { const p = state.customTourney.participants.find(x => x.id === id); if(p){ p.paid = c; saveData(); } };
+  window.deleteCustomParticipant = id => { state.customTourney.participants = state.customTourney.participants.filter(x => x.id !== id); saveData(); renderCustomTourney(); };
+  $('gw-title').addEventListener('input', e => { state.giveaways.title = e.target.value; saveData(); });
+  $('gw-entries').addEventListener('input', e => { state.giveaways.entries = e.target.value; saveData(); $('gw-valid-count').textContent = `有効: ${getValidGiveawayEntries().length} 名`; });
+  $('btn-gw-dedupe').addEventListener('click', () => { const u = getValidGiveawayEntries(); $('gw-entries').value = u.join('\n'); state.giveaways.entries = $('gw-entries').value; saveData(); $('gw-valid-count').textContent = `有効: ${u.length} 名`; showToast('重複を除外しました'); });
+  function sGR(isS) {
+    const aE = getValidGiveawayEntries(); const aW = new Set((state.giveaways.winners || []).map(w=>w.name)); const pl = aE.filter(n=>!aW.has(n));
+    if(pl.length===0){ showToast('対象がいません', true); return; }
+    const bx = $('gw-roulette-box'); const dp = $('gw-roulette-display'); const st = $('gw-roulette-status');
+    bx.classList.add('roulette-active'); st.textContent = isS ? 'DRAWING SUB-WINNER...' : 'DRAWING WINNER...';
+    let tk = 0; const tm = setInterval(() => {
+      dp.textContent = pl[Math.floor(Math.random() * pl.length)]; tk++;
+      if(tk >= 28){ clearInterval(tm); bx.classList.remove('roulette-active'); const fw = pl[Math.floor(Math.random() * pl.length)]; dp.textContent = `👑 ${fw}`; st.textContent = isS ? 'SUB-WINNER SELECTED!' : 'CONGRATULATIONS!';
+      state.giveaways.winners.unshift({ name:fw, isSub:isS, followed:false, rted:false, sent:false }); saveData(); renderGiveaway(); showToast(`🎉 ${fw} が当選！`); }
+    }, 65);
+  }
+  $('btn-gw-spin').addEventListener('click', () => sGR(false)); $('btn-gw-spin-sub').addEventListener('click', () => sGR(true));
+  $('btn-gw-clear-winners').addEventListener('click', () => { state.giveaways.winners = []; saveData(); renderGiveaway(); $('gw-roulette-display').textContent = '--- ??? ---'; });
+  window.toggleGwCheck = (i, k, v) => { if(state.giveaways.winners[i]){ state.giveaways.winners[i][k] = v; saveData(); } };
+  window.copyGwDm = n => { copyTextSafe(`${n} 様\n\nこの度は「${state.giveaways.title || '企画'}」へのご応募誠にありがとうございました！👑\n厳正なる抽選の結果、見事ご当選されましたのでご連絡いたします！🎉\n\n景品お受け取りのため、ご希望の受取方法をご返信ください！✨`); showToast('コピーしました'); };
+  $('cal-prev-month').addEventListener('click', () => { state.calMonth--; if(state.calMonth<0){ state.calMonth=11; state.calYear--; } renderCalendar(); });
+  $('cal-next-month').addEventListener('click', () => { state.calMonth++; if(state.calMonth>11){ state.calMonth=0; state.calYear++; } renderCalendar(); });
+  $('cal-event-start-date').addEventListener('change', e => { const ed = $('cal-event-end-date'); if(!ed.value || ed.value < e.target.value) ed.value = e.target.value; });
+  $('calendar-event-form').addEventListener('submit', e => {
+    e.preventDefault(); const sD = $('cal-event-start-date').value || state.calSelectedDate; let eD = $('cal-event-end-date').value || sD; if(eD<sD) eD=sD;
+    const sT = $('cal-event-start-time').value.trim(); const eT = $('cal-event-end-time').value.trim();
+    state.calendarEvents.push({ id:Date.now(), date:sD, startDate:sD, endDate:eD, startTime:sT, endTime:eT, type:$('cal-event-type').value, time:sT, title:$('cal-event-title').value.trim() });
+    saveData(); state.calSelectedDate = sD; renderCalendar(); $('cal-event-title').value=''; $('cal-event-start-time').value=''; $('cal-event-end-time').value=''; showToast('追加しました');
+  });
+  $('btn-cal-preset-fn').addEventListener('click', () => {
+    const y = state.calYear; const m = String(state.calMonth + 1).padStart(2, '0');
+    state.calendarEvents.push({ id: Date.now()+1, date: `${y}-${m}-07`, startDate: `${y}-${m}-07`, endDate: `${y}-${m}-07`, startTime: '18:00', endTime: '21:00', type: 'OFFICIAL', time: '18:00', title: '① ソロキャッシュ' }, { id: Date.now()+2, date: `${y}-${m}-14`, startDate: `${y}-${m}-14`, endDate: `${y}-${m}-14`, startTime: '18:00', endTime: '21:00', type: 'OFFICIAL', time: '18:00', title: '② デュオキャッシュ' }, { id: Date.now()+3, date: `${y}-${m}-21`, startDate: `${y}-${m}-21`, endDate: `${y}-${m}-22`, startTime: '19:00', endTime: '22:00', type: 'OFFICIAL', time: '19:00', title: '③ FNCS 予選' }, { id: Date.now()+4, date: `${y}-${m}-28`, startDate: `${y}-${m}-28`, endDate: `${y}-${m}-28`, startTime: '21:00', endTime: '23:30', type: 'PRIZE', time: '21:00', title: 'REIGN カスタム' });
+    saveData(); renderCalendar(); showToast('追加しました');
+  });
+  $('btn-cal-copy-week').addEventListener('click', () => {
+    const ym = `${state.calYear}-${String(state.calMonth + 1).padStart(2, '0')}`; const mS = `${ym}-01`; const mE = `${ym}-31`;
+    const evs = state.calendarEvents.filter(e => { const s=e.startDate||e.date||''; const end=e.endDate||s; return s<=mE&&end>=mS; }).sort((a,b) => `${a.startDate||a.date} ${a.startTime||a.time||''}`.localeCompare(`${b.startDate||b.date} ${b.startTime||b.time||''}`));
+    if(evs.length===0){ showToast('予定がありません', true); return; }
+    copyTextSafe(`【📅 REIGN Esports ${state.calYear}年${state.calMonth + 1}月 スケジュール】\n` + evs.map(e => `・${(e.startDate||e.date)===e.endDate ? `${(e.startDate||e.date).slice(5)} ` : ''}${fmtPeriod(e)} ${e.title}`).join('\n') + `\n\n#REWIN #REIGN_Esports`); showToast('コピーしました');
+  });
+  window.deleteCalendarEvent = id => { state.calendarEvents = state.calendarEvents.filter(e => e.id !== id); saveData(); renderCalendar(); };
+  const fDt = $('fin-date'); if(fDt) fDt.value = new Date().toISOString().split('T')[0];
+  $('finance-form').addEventListener('submit', e => { e.preventDefault(); state.finances.unshift({ id:Date.now(), type:$('fin-type').value, date:$('fin-date').value, title:$('fin-title').value.trim(), amount:Number($('fin-amount').value)||0 }); saveData(); renderFinance(); $('fin-title').value=''; $('fin-amount').value=''; showToast('記録しました'); });
+  window.deleteFinance = id => { state.finances = state.finances.filter(f => f.id !== id); saveData(); renderFinance(); };
+  $$('.recruit-filter-btn').forEach(b => { b.addEventListener('click', () => { $$('.recruit-filter-btn').forEach(btn => { btn.classList.remove('bg-reign-accent','text-black','font-bold'); btn.classList.add('bg-[#15171e]','text-reign-dim'); }); b.classList.add('bg-reign-accent','text-black','font-bold'); b.classList.remove('bg-[#15171e]','text-reign-dim'); state.applicantFilter = b.dataset.status; renderApplicants(); }); });
+  $('bulk-delete-action').addEventListener('change', e => { const v = e.target.value; e.target.value = ''; if(!v) return; if(v==='REJECT'){ state.applicants = state.applicants.filter(a => a.status !== 'REJECT'); showToast('削除しました'); } if(v==='ALL'&&confirm('全削除しますか？')){ state.applicants=[]; showToast('削除しました'); } saveData(); renderApplicants(); });
+  $('btn-analyze-paste').addEventListener('click', pPI); $('btn-commit-import').addEventListener('click', eMI);
+  $('csv-file-input').addEventListener('change', async e => {
+    const f = e.target.files[0]; if(!f) return;
+    if(f.name.toLowerCase().endsWith('.pdf') && window.pdfjsLib) {
+      showToast('PDF解析中...', false); const ab = await f.arrayBuffer(); const pdf = await pdfjsLib.getDocument({data:ab}).promise; let rs = [];
+      for(let i=1; i<=pdf.numPages; i++) { const p = await pdf.getPage(i); const c = await p.getTextContent(); let lY = null; let cL = []; c.items.forEach(it => { const y = it.transform ? Math.round(it.transform[5]) : null; if(lY!==null&&y!==null&&Math.abs(y-lY)>5){ if(cL.length>0) rs.push(cL.join('\t')); cL=[]; } if(it.str&&it.str.trim()) cL.push(it.str.trim()); if(y!==null) lY=y; }); if(cL.length>0) rs.push(cL.join('\t')); }
+      $('tsv-paste-input').value = rs.join('\n'); pPI();
+    } else { const r = new FileReader(); r.onload = evt => pRDS(evt.target.result); r.readAsText(f); }
+  });
+  $('btn-fetch-sheet-url').addEventListener('click', async () => {
+    const ui = $('sheet-url-input').value.trim(); if(!ui) return; const m = ui.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/); if(!m||!m[1]) return;
+    showToast('取得中...'); try { const res = await fetch(`https://docs.google.com/spreadsheets/d/${m[1]}/export?format=csv`); if(!res.ok) throw new Error(); pRDS(await res.text()); } catch(err) { showToast('取得失敗', true); }
+  });
+  $('btn-demo-recruit').addEventListener('click', () => { $('tsv-paste-input').value = `タイムスタンプ\t活動名を教えてください。\t年齢を教えてください。\t希望部門を教えてください。\t使用機種\tXアカウント\tTracker\tDiscordID\t最高成績\n2026/11/08\tDemo_Taro\t18\t🔴 Fortnite競技部門\tPC\thttps://x.com/demo\t-\tdemo#123\tソロ1位\n2026/11/09\tDemo_Jiro\t16\t🔵 Fortnite育成部門\tPS5\t-\t-\tjiro#456\tアリーナ満タン`; pPI(); });
+  $('btn-gen-slip-indiv').addEventListener('click', e => { e.preventDefault(); const m = state.members.find(x => x.id === aDMId); if(!m) return; slipDownloadTarget = m; pST(m); $('slip-dl-btn-text').textContent = '画像としてダウンロード'; $('slip-batch-hint').classList.add('hidden'); $('slip-preview-modal').classList.remove('hidden'); });
+  $('btn-batch-salary-slips').addEventListener('click', () => { const el = state.members.filter(m => DEPARTMENTS[m.role]?.hasSalary && !m.lateJoin); if(el.length===0){ showToast('対象者がいません', true); return; } slipDownloadTarget = el; pST(el[0]); $('slip-dl-btn-text').textContent = `全員分を一括ダウンロード (${el.length}枚)`; $('slip-batch-hint').classList.remove('hidden'); $('slip-preview-modal').classList.remove('hidden'); });
+  $('btn-close-slip-preview').addEventListener('click', () => $('slip-preview-modal').classList.add('hidden'));
+  $('btn-execute-slip-download').addEventListener('click', async () => {
+    const btn = $('btn-execute-slip-download'); btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed');
+    if (Array.isArray(slipDownloadTarget)) {
+      showToast(`全${slipDownloadTarget.length}枚の生成開始...`);
+      for (let m of slipDownloadTarget) { pST(m); await new Promise(r=>setTimeout(r,50)); try { const cv = await html2canvas($('slip-template'), {backgroundColor:'#0a0a0c', scale:2}); const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = `REIGN_SLIP_${m.name}.png`; a.click(); } catch(e){} await new Promise(r=>setTimeout(r,400)); }
+      showToast('完了！');
+    } else if (slipDownloadTarget) {
+      showToast('生成中...', false); pST(slipDownloadTarget); await new Promise(r=>setTimeout(r,50)); try { const cv = await html2canvas($('slip-template'), {backgroundColor:'#0a0a0c', scale:2}); const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = `REIGN_SLIP_${slipDownloadTarget.name}.png`; a.click(); showToast('完了！'); } catch(e){}
+    }
+    btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); $('slip-preview-modal').classList.add('hidden');
+  });
+  window.deleteMember = id => { state.members = state.members.filter(m => m.id !== id); saveData(); renderRoster(); renderPayout(); renderAcademy(); showToast('削除しました'); };
+  window.deleteActivity = id => { state.activities = state.activities.filter(a => a.id !== id); saveData(); renderActivities(); renderPayout(); renderRoster(); if(aDMId) openMemberDetail(aDMId); showToast('削除しました'); };
+  window.updateApplicantStatus = (id, val) => { state.applicants = state.applicants.map(a => a.id === id ? { ...a, status: val } : a); saveData(); renderApplicants(); };
+  window.deleteApplicant = id => { state.applicants = state.applicants.filter(a => a.id !== id); saveData(); renderApplicants(); showToast('削除しました'); };
+  window.deleteNote = i => { state.notes.splice(i, 1); saveData(); renderNotes(); showToast('削除しました'); };
+  window.deleteSquad = id => { state.apexSquads = state.apexSquads.filter(s => s.id !== id); saveData(); renderSquads(); showToast('削除しました'); };
+  window.promoteToRoster = id => {
+    const a = state.applicants.find(x => x.id === id); if(!a) return;
+    state.members.push({ id:Date.now(), name:a.name, role:a.role, status:'TRIAL', joinDate:new Date().toISOString().split('T')[0], lateJoin:false, twitter:a.values?.['f_x']||'', discord:a.values?.['f_discord']||'', notes:`[応募より昇格]`, eval:{} });
+    state.applicants = state.applicants.filter(x => x.id !== id); saveData(); renderRoster(); renderApplicants(); renderPayout(); renderAcademy(); showToast('昇格しました');
+  };
+  window.generateRewardTweet = name => { copyTextSafe(`【報告】\nREIGN Esports (@REIGN_Esports) より今月度のチーム報酬を頂きました！👑✨\n日々のサポートに感謝し、更なる結果で恩返しします！🔥\n\n#REIGN報酬 #REWIN #REIGN_Esports`); showToast('コピーしました'); };
+  window.generateResultTweet = name => { copyTextSafe(`【Match Result】\n本日開催された大会に出場しました！🏆\n応援ありがとうございました！次に向けて調整していきます🔥\n@REIGN_Esports\n\n#REWIN #REIGN_Esports`); showToast('コピーしました'); };
+
+  renderRoster(); renderPayout(); renderActivities(); renderApplicants(); renderNotes(); renderSquads(); renderAcademy(); renderCustomTourney(); renderGiveaway(); renderCalendar(); renderFinance();
+});
+</script>
+</body>
+</html>
